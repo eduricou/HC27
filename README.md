@@ -21,6 +21,8 @@ Port per a Windows 11 del joc web *Estic Hoquei Herba*: Iluro HC contra Club Pol
 | Format i lint | `bash tools/lint.sh` |
 | Estadístiques de la simulació | `bash tools/sim.sh 50` |
 | Captura de pantalla | `bash tools/shot.sh menu` |
+| Recorregut automàtic (menú → partit → final) | `bash tools/smoke.sh` |
+| Fps a 1080p | `bash tools/bench.sh` |
 | Exportar l'`.exe` i el zip | `bash tools/export.sh` |
 | Regenerar la referència web | `node tools/golden_headless.mjs` |
 
@@ -28,4 +30,5 @@ Port per a Windows 11 del joc web *Estic Hoquei Herba*: Iluro HC contra Club Pol
 
 - **Fase 0 (preparació):** feta. Hi ha l'esquelet del projecte, les proves i el lint funcionen, les estadístiques de referència de la web estan generades i l'exportació d'un `.exe` buit funciona.
 - **Fase 1 (simulació headless):** feta. `src/sim/` reprodueix la web pas a pas amb la mateixa llavor. Hi ha 43 proves, i les mitjanes de 50 partits queden dins del ±20 %. Un partit triga unes 10 s en un procés; 50 partits en paral·lel, 2–3 minuts, que és el criteri acordat (vegeu `docs/decisions/0003`).
-- **Fase 2 (primer jugable amb caixes grises):** és la següent.
+- **Fase 2 (primer jugable amb caixes grises):** feta. Hi ha camp pla amb línies, jugadors com a càpsules, càmera TV, teclat i comandament, HUD mínim, pausa, descansos i menú amb un partit de fons. Va a uns 355 fps a 1080p.
+- **Fase 3 (estadi i gespa):** és la següent.

@@ -467,6 +467,12 @@ Les durades són orientatives i suposen una sola persona a temps parcial.
 - La consola no mostra errors.
 - El joc va a més de 300 fps al PC de desenvolupament.
 
+**Fet (5/11/2026).**
+- El recorregut complet sense pantalla passa sense errors ni avisos, tant CPU contra CPU com amb un humà automàtic (`tools/smoke.sh`).
+- Va a uns 355 fps a 1080p (Intel Arc 130V; `tools/bench.sh`).
+- Queda per provar a mà una partida amb el teclat i una amb un comandament físic.
+- Decisions: `docs/decisions/0004`.
+
 ### Fase 3: estadi i gespa (1,5 setmanes)
 
 **Feina:**

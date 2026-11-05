@@ -1,56 +1,45 @@
-[gd_scene format=3]
+[gd_scene load_steps=8 format=3]
 
-[node name="Main" type="Control"]
-layout_mode = 3
-anchors_preset = 15
-anchor_right = 1.0
-anchor_bottom = 1.0
-grow_horizontal = 2
-grow_vertical = 2
+[ext_resource type="Script" path="res://src/game/main.gd" id="1_main"]
+[ext_resource type="Script" path="res://src/game/match_runner.gd" id="2_runner"]
+[ext_resource type="Script" path="res://src/game/match_view.gd" id="3_view"]
+[ext_resource type="Script" path="res://src/game/camera_rig.gd" id="4_camera"]
+[ext_resource type="Script" path="res://src/ui/hud.gd" id="5_hud"]
+[ext_resource type="Script" path="res://src/ui/menu.gd" id="6_menu"]
 
-[node name="Fons" type="ColorRect" parent="."]
-layout_mode = 1
-anchors_preset = 15
-anchor_right = 1.0
-anchor_bottom = 1.0
-grow_horizontal = 2
-grow_vertical = 2
-color = Color(0.039, 0.071, 0.059, 1)
+[sub_resource type="Environment" id="Environment_grey"]
+background_mode = 1
+background_color = Color(0.4, 0.5, 0.58, 1)
+ambient_light_source = 2
+ambient_light_color = Color(0.62, 0.7, 0.78, 1)
+ambient_light_energy = 0.9
+tonemap_mode = 2
 
-[node name="Titol" type="Label" parent="."]
-layout_mode = 1
-anchors_preset = 8
-anchor_left = 0.5
-anchor_top = 0.5
-anchor_right = 0.5
-anchor_bottom = 0.5
-offset_left = -400.0
-offset_top = -60.0
-offset_right = 400.0
-offset_bottom = 60.0
-grow_horizontal = 2
-grow_vertical = 2
-theme_override_colors/font_color = Color(0.941, 0.486, 0.102, 1)
-theme_override_font_sizes/font_size = 64
-text = "Estic Hoquei Herba"
-horizontal_alignment = 1
-vertical_alignment = 1
+[node name="Main" type="Node"]
+script = ExtResource("1_main")
 
-[node name="Subtitol" type="Label" parent="."]
-layout_mode = 1
-anchors_preset = 8
-anchor_left = 0.5
-anchor_top = 0.5
-anchor_right = 0.5
-anchor_bottom = 0.5
-offset_left = -400.0
-offset_top = 50.0
-offset_right = 400.0
-offset_bottom = 100.0
-grow_horizontal = 2
-grow_vertical = 2
-theme_override_colors/font_color = Color(0.933, 0.949, 0.925, 1)
-theme_override_font_sizes/font_size = 24
-text = "Fase 0 · esquelet del projecte"
-horizontal_alignment = 1
-vertical_alignment = 1
+[node name="Env" type="WorldEnvironment" parent="."]
+environment = SubResource("Environment_grey")
+
+[node name="Sun" type="DirectionalLight3D" parent="."]
+rotation = Vector3(-0.9, 0.55, 0)
+light_energy = 1.1
+shadow_enabled = true
+directional_shadow_mode = 1
+directional_shadow_max_distance = 100.0
+
+[node name="Runner" type="Node" parent="."]
+script = ExtResource("2_runner")
+
+[node name="View" type="Node3D" parent="."]
+script = ExtResource("3_view")
+
+[node name="Camera" type="Camera3D" parent="."]
+current = true
+script = ExtResource("4_camera")
+
+[node name="Hud" type="CanvasLayer" parent="."]
+script = ExtResource("5_hud")
+
+[node name="Menu" type="CanvasLayer" parent="."]
+script = ExtResource("6_menu")

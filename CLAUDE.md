@@ -6,8 +6,8 @@ al Camp Municipal d'Hoquei de Mataró. És un port de la versió web: reference/
 Regles, constants i toleràncies: docs/regles.md. Decisions: docs/decisions/.
 
 ## Estat
-- Fase 0 (preparació) i fase 1 (simulació headless) fetes el 5/11/2026. Següent: fase 2
-  (primer jugable amb caixes grises), pla §9 i §10.
+- Fases 0 (preparació), 1 (simulació headless) i 2 (primer jugable amb caixes grises) fetes
+  el 5/11/2026. Següent: fase 3 (estadi i gespa), pla §9 i §10.
 - La referència és la versió de 2.029 línies, no la «v4» del pla original (docs/decisions/0001).
 - La simulació de src/sim/ reprodueix la web pas a pas amb la mateixa llavor
   (docs/decisions/0002). Un partit triga ~10 s en un procés i ens hi quedem: el criteri és
@@ -32,6 +32,10 @@ Regles, constants i toleràncies: docs/regles.md. Decisions: docs/decisions/.
 - Comprovar un script: `"$GODOT" --headless --path . --check-only -s <script.gd>`
 - Reimportar recursos: `"$GODOT" --headless --path . --import`
 - Captures per revisar visualment: `bash tools/shot.sh <escenari> [fotogrames]` → PNG a build/shots/
+  Escenaris (src/game/main.gd): menu, intro, match, human, pc, pause, break, full.
+- Recorregut complet sense pantalla (partit → descansos → final → menú; falla si hi ha errors
+  o avisos a la consola): `bash tools/smoke.sh`. Passa-ho després de tocar src/game o src/ui.
+- Fps a 1920×1080 sense VSync: `bash tools/bench.sh [segons]` (obre una finestra).
 - Exportació: `bash tools/export.sh` (sempre demana confirmació)
 - Referència web: `node tools/golden_headless.mjs [N] [qlen] [sortida]` (Edge headless)
 
@@ -48,6 +52,12 @@ Regles, constants i toleràncies: docs/regles.md. Decisions: docs/decisions/.
 - Pas fix de 60 Hz a _physics_process. La vista interpola amb
   Engine.get_physics_interpolation_fraction().
 - src/game/ llegeix l'estat de la simulació i l'aplica als nodes; no canvia regles.
+  MatchRunner fa els passos (pausa, descansos, final), MatchView interpola entre passos,
+  CameraRig és la càmera TV i HumanController omple SimInput. Accions d'entrada:
+  InputActions, registrades en temps d'execució. HUD i menú: src/ui/, construïts des del codi
+  fins a la fase 5 (docs/decisions/0004).
+- Coords.to_view() és una reflexió: a les malles generades cal `cull_mode = CULL_DISABLED`
+  (o invertir l'ordre dels vèrtexs), si no les cares no es veuen.
 - Unitats en metres i segons. Simulació: x = llargada (91,4), y = amplada (55), z = altura.
   Vista: Vector3(x, z, y).
 - Constants del camp i del joc: src/sim/constants.gd, copiades de la referència.
@@ -73,5 +83,8 @@ Regles, constants i toleràncies: docs/regles.md. Decisions: docs/decisions/.
 - Després de cada canvi: `bash tools/lint.sh` i `bash tools/test.sh`. Si fallen, la tasca no està feta.
 - Si toques la IA o les regles: `bash tools/sim.sh 50` i compara amb
   reference/golden/stats_web.json (toleràncies a docs/regles.md). Fes servir el mateix qlen.
-- Commits petits, en català, amb el format `fase N: què canvia`. No facis mai `git push` sense que t'ho demani.
+- Commits en català, amb el format `fase N: què canvia`, només quan hi ha un bloc de feina
+  acabat i verificat (lint i proves en verd). Res de commits per a retocs solts: s'afegeixen
+  al següent commit amb contingut. Puja a GitHub (`git push`) quan valgui la pena, p. ex. en
+  acabar un bloc o una fase. Mai `git push --force`.
 - La referència és llarga (2.029 línies): llegeix-la per blocs segons el mapa de docs/pla-pc.md §8.
