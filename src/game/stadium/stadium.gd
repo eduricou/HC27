@@ -1,8 +1,9 @@
-## Estadi: el Camp Municipal d'Hoquei de Mataró, amb la grada i el públic, les tanques
-## LED, les banquetes, les torres de llum, la casa del club, els pins i la ciutat al fons.
-## També porta la llum de tarda (sol amb ombres) o de nit (quatre focus), el cel i l'entorn.
-## Es construeix per codi a partir de StadiumLayout (les mesures de glInit() a la web).
-## ref: línies 1249–1579 (WebGL: estadi, gespa i cel) i drawGlows()
+## El camp de l'Iluro HC al carrer Galícia de Mataró, com el real (docs/decisions/0006):
+## gespa amb el voral de formigó, el passeig amb les banquetes i el públic dret, tanques,
+## la bardissa i el talús de l'est, sis torres de llum, les casetes del club, el carrer
+## amb cotxes i cases, i la ciutat al fons. També porta la llum de tarda (sol amb ombres)
+## o de nit (focus), el cel i l'entorn. Es construeix per codi amb StadiumLayout.
+## ref: línies 1249–1579 de la web (gespa, cel, ciutat, pins) i drawGlows()
 class_name Stadium
 extends Node3D
 
@@ -15,18 +16,26 @@ const TURF_SHADER := preload("res://shaders/turf.gdshader")
 const SKY_SHADER := preload("res://shaders/sky.gdshader")
 const NET_SHADER := preload("res://shaders/net.gdshader")
 const CROWD_SHADER := preload("res://shaders/crowd.gdshader")
-const LED_SHADER := preload("res://shaders/led.gdshader")
 const FACADE_SHADER := preload("res://shaders/facade.gdshader")
 const FOLIAGE_SHADER := preload("res://shaders/foliage.gdshader")
+const HEDGE_SHADER := preload("res://shaders/hedge.gdshader")
 
-## Colors de la web (texSolid i altres).
 const STEEL := Color("5d636a")
-const DARK := Color("2a2f35")
-const ROOF := Color("40464d")
-const CONCRETE := Color("9b9e98")
+const CONCRETE := Color("a3a29b")
 const FLAT_ROOF := Color("8f8f88")
-const SEAT_ORANGE := Color("e2711c")
-const SEAT_WHITE := Color("f2f2ee")
+const TILE_ROOF := Color("a8553f")
+const BENCH_ROOF := Color("8e2a22")
+const FENCE_GREEN := Color(0.2, 0.3, 0.24, 1.0)
+const CAR_COLORS: Array[Color] = [
+	Color("e9e9e6"),
+	Color("b9bcc0"),
+	Color("1d1f22"),
+	Color("26375c"),
+	Color("8e2320"),
+	Color("6c7075"),
+	Color("f2f2f0"),
+	Color("3f4a3c"),
+]
 
 ## Llum de tarda i de nit (s'ajusta mirant les captures de tools/shot_views.sh).
 const DAY := {
@@ -39,31 +48,24 @@ const DAY := {
 	"fog": Color(0.84, 0.83, 0.78),
 }
 const NIGHT := {
-	"spot_energy": 46.0,
+	"spot_energy": 22.0,
 	"spot_color": Color(1.0, 0.97, 0.9),
 	# De nit el cel és gairebé negre: la llum ambient ve sobretot d'un color fix (el
-	# rebot dels focus i la ciutat), perquè els arbres i la casa del club no siguin negres.
+	# rebot dels focus i la ciutat), perquè els arbres i les cases no siguin negres.
 	"ambient": 1.0,
 	"sky_ambient": 0.3,
 	"ambient_color": Color(0.07, 0.085, 0.12),
 	"exposure": 1.05,
 	"fog": Color(0.07, 0.09, 0.14),
 	"lamp": 9.0,
+	"street_lamp": 5.0,
 }
-## Obertura dels focus (graus): tots apunten al centre del camp i la vora del con
-## esmorteeix la llum a prop de la torre, perquè el camp quedi il·luminat igual.
-const SPOT_ANGLE := 55.0
-const SPOT_RANGE := 190.0
-## Capa de render de l'estadi fix. Els focus de nit no en fan ombra (shadow_caster_mask):
+## Focus: obertura (graus) i abast. Cada torre il·lumina la meitat de l'altra banda.
+const SPOT_ANGLE := 62.0
+const SPOT_RANGE := 115.0
+## Capa de render de les coses fixes. Els focus de nit no en fan ombra (shadow_caster_mask):
 ## amb un con tan ample l'ombra surt a trossos, i així només la fan jugadors i porteries.
 const STATIC_LAYER := 2
-## Passadissos de la grada (x) i amplada.
-const AISLES: Array[float] = [-15.5, 0.0, 15.5]
-const AISLE_W := 1.3
-const SEAT_PITCH := 0.5
-const OCCUPANCY := 0.74
-## Sector de l'afició del Polo.
-const AWAY_X := Vector2(14.0, 30.5)
 
 var night := true
 var fx := StadiumFx.new()
@@ -72,9 +74,11 @@ var quality: Dictionary = {}
 var _built := false
 var _env: Environment
 var _sky_mat: ShaderMaterial
+var _turf_mat: ShaderMaterial
 var _sun: DirectionalLight3D
 var _spots: Array[SpotLight3D] = []
 var _lamp_mat: StandardMaterial3D
+var _street_lamp_mat: StandardMaterial3D
 var _flares: Array[MeshInstance3D] = []
 var _textures := {}
 
@@ -89,21 +93,24 @@ func build() -> void:
 	_built = true
 	_build_lighting()
 	add_child(_ground())
-	add_child(_stand())
-	add_child(_crowd())
-	add_child(_led())
+	add_child(_east_slope())
 	add_child(_fences())
-	add_child(_towers())
+	add_child(_banners())
+	add_child(_hedge())
+	add_child(_poles())
 	add_child(_benches())
-	add_child(_clubhouse())
+	add_child(_spectators())
+	add_child(_huts())
+	add_child(_street())
 	add_child(_city())
-	add_child(_pines())
+	add_child(_vegetation())
 	for c in get_children():
 		_set_layers(c)
 	for side: int in [-1, 1]:
 		var g := GoalView.new(side)
 		g.fx = fx
 		add_child(g)
+	add_child(_spare_goals())
 	set_night(night)
 	apply_quality(quality if not quality.is_empty() else Quality.preset(Quality.DEFAULT))
 
@@ -113,10 +120,9 @@ func on_step(events: Array[Dictionary]) -> void:
 	fx.step(events, Constants.STEP)
 
 
-## Un cop per fotograma: el públic i les tanques LED. `t`: temps del partit (s).
-func update_frame(t: float) -> void:
+## Un cop per fotograma: el públic.
+func update_frame() -> void:
 	RenderingServer.global_shader_parameter_set(&"crowd_jump", fx.crowd_jump)
-	RenderingServer.global_shader_parameter_set(&"led_scroll", StadiumFx.led_scroll(t))
 
 
 # --- Llum i entorn -----------------------------------------------------------------
@@ -140,7 +146,7 @@ func set_night(on: bool) -> void:
 	_env.tonemap_exposure = cfg["exposure"]
 	_env.fog_light_color = cfg["fog"]
 	_lamp_mat.emission_energy_multiplier = NIGHT["lamp"] if on else 0.0
-	# El cel ha de refer el mapa de reflexos amb els colors nous.
+	_street_lamp_mat.emission_energy_multiplier = NIGHT["street_lamp"] if on else 0.0
 	_sky_mat.set_shader_parameter("sun_dir", L.sun_view())
 
 
@@ -203,17 +209,17 @@ func _build_lighting() -> void:
 	_sun.directional_shadow_blend_splits = true
 	add_child(_sun)
 
-	for t in L.TOWERS:
+	for p in L.POLES:
 		var sp := SpotLight3D.new()
 		sp.name = "Focus"
-		var head := _tower_head_pos(t)
+		var head := _pole_head_pos(p)
 		sp.position = head
-		sp.basis = Basis.looking_at(_tower_aim(t) - head, Vector3.UP)
+		sp.basis = Basis.looking_at(_pole_aim(p) - head, Vector3.UP)
 		sp.light_color = NIGHT["spot_color"]
 		sp.light_energy = NIGHT["spot_energy"]
 		sp.spot_range = SPOT_RANGE
 		sp.spot_angle = SPOT_ANGLE
-		sp.spot_angle_attenuation = 0.6
+		sp.spot_angle_attenuation = 0.7
 		sp.spot_attenuation = 1.0
 		sp.shadow_enabled = true
 		sp.shadow_caster_mask = ~STATIC_LAYER
@@ -223,21 +229,21 @@ func _build_lighting() -> void:
 		_spots.append(sp)
 
 
+## Centre del capçal dels focus de la torre p (coordenades de Godot).
+static func _pole_head_pos(p: Vector2) -> Vector3:
+	return Coords.to_view(p.x, p.y - 0.5 * signf(p.y), L.POLE_H + 0.8)
+
+
+## Punt on apunten els focus de la torre p: la meitat del camp de l'altra banda.
+static func _pole_aim(p: Vector2) -> Vector3:
+	return Coords.to_view(p.x * 0.85, -signf(p.y) * 7.0, 0.0)
+
+
 static func _set_layers(n: Node) -> void:
 	if n is VisualInstance3D:
 		(n as VisualInstance3D).layers = STATIC_LAYER
 	for c in n.get_children():
 		_set_layers(c)
-
-
-## Centre del capçal dels focus de la torre t (coordenades de Godot).
-static func _tower_head_pos(t: Vector2) -> Vector3:
-	return Coords.to_view(t.x, t.y + (0.7 if t.y < 0.0 else -0.7), L.TOWER_H + 1.8)
-
-
-## Punt on apunten els focus de la torre t: el centre del camp.
-static func _tower_aim(_t: Vector2) -> Vector3:
-	return Vector3.ZERO
 
 
 # --- Materials ------------------------------------------------------------------------
@@ -272,359 +278,218 @@ func _shader_mat(shader: Shader, params: Dictionary) -> ShaderMaterial:
 	return m
 
 
+func _facade_mat(tex: String, cells: Vector2, lit: float) -> ShaderMaterial:
+	return _shader_mat(FACADE_SHADER, {"tex": _tex(tex), "cells": cells, "lit_ratio": lit})
+
+
+static func _emissive(c: Color) -> StandardMaterial3D:
+	var m := _mat(c, 0.4)
+	m.emission_enabled = true
+	m.emission = c
+	return m
+
+
 # --- Terra ------------------------------------------------------------------------------
 
 
-## Gespa, voral i herba fins a l'horitzó, amb el shader de la web. ref: bGround, FS_GROUND
+## Gespa, voral, carrer i terreny fins a l'horitzó, amb el shader de la web adaptat al
+## camp real. ref: bGround, FS_GROUND
 func _ground() -> MeshInstance3D:
+	var huts := L.HUTS_AREA
+	_turf_mat = _shader_mat(
+		TURF_SHADER,
+		{
+			"noise_tex": _tex("noise"),
+			"apron_x": L.APRON_X,
+			"walk_y": L.WALK_Y,
+			"east_y": L.EAST_Y,
+			"sidewalk_y": L.SIDEWALK_Y,
+			"street_y0": L.STREET_Y0,
+			"street_y1": L.STREET_Y1,
+			"houses_y": L.HOUSES_Y,
+			"roundabout": L.ROUNDABOUT,
+			"huts_area": Vector4(huts.position.x, huts.position.y, huts.end.x, huts.end.y),
+		}
+	)
 	var mi := MeshInstance3D.new()
 	mi.name = "Terra"
 	var pm := PlaneMesh.new()
 	pm.size = Vector2(520.0, 400.0)
 	mi.mesh = pm
 	mi.position = Coords.to_view(0.0, -60.0, 0.0)
-	mi.material_override = _shader_mat(TURF_SHADER, {"noise_tex": _tex("noise")})
+	mi.material_override = _turf_mat
 	mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	return mi
 
 
-# --- Grada ------------------------------------------------------------------------------
-
-
-func _stand() -> Node3D:
+## Talús de l'est amb la carretera de dalt i la bionda.
+func _east_slope() -> Node3D:
 	var root := Node3D.new()
-	root.name = "Grada"
-	var x0 := L.STAND_X0
-	var x1 := L.STAND_X1
-	var yf := L.STAND_YF
-	var yb := L.STAND_YB
-	var conc := MeshBuilder.new()
-	# Graons: petja i contrapetja de cada fila.
-	for r in L.STAND_ROWS:
-		var z := L.row_z(r)
-		var ya := L.row_y(r)
-		var yn := L.row_y(r + 1)
-		conc.quad(
-			Vector3(x0, ya, z),
-			Vector3(x1, ya, z),
-			Vector3(x1, yn, z),
-			Vector3(x0, yn, z),
-			Vector3(0, 0, 1)
+	root.name = "Talus"
+	var x0 := -150.0
+	var x1 := 150.0
+	var ground := MeshBuilder.new()
+	var steps: Array[Vector2] = [
+		Vector2(L.SLOPE_Y0, 0.0),
+		Vector2(L.ROAD_Y0, L.ROAD_Z),
+		Vector2(L.ROAD_Y1, L.ROAD_Z),
+		L.SLOPE_TOP,
+		Vector2(220.0, L.SLOPE_TOP.y),
+	]
+	for i in steps.size() - 1:
+		if i == 1:
+			continue  # la carretera
+		var a := steps[i]
+		var b := steps[i + 1]
+		ground.quad(
+			Vector3(x0, a.x, a.y),
+			Vector3(x1, a.x, a.y),
+			Vector3(x1, b.x, b.y),
+			Vector3(x0, b.x, b.y),
+			Vector3(0, -0.3, 1)
 		)
-		if r > 0:
-			var zp := L.row_z(r - 1)
-			conc.quad(
-				Vector3(x0, ya, zp),
-				Vector3(x1, ya, zp),
-				Vector3(x1, ya, z),
-				Vector3(x0, ya, z),
-				Vector3(0, 1, 0)
-			)
-	# Laterals (amb gruix) i mur del darrere.
-	for s: float in [-1.0, 1.0]:
-		var xi := x0 if s < 0.0 else x1
-		var xo := xi + s * 0.3
-		for xx: float in [xi, xo]:
-			var pts: Array[Vector3] = [
-				Vector3(xx, yf - 0.25, 0.0),
-				Vector3(xx, yb - 0.3, 0.0),
-				Vector3(xx, yb - 0.3, L.STAND_BACK_H),
-				Vector3(xx, yf - 0.25, L.STAND_Z0),
-			]
-			conc.polygon(pts, Vector3(s if xx == xo else -s, 0, 0))
-		var e := Vector3(0, 0, 1)
-		conc.quad(
-			Vector3(xi, yf - 0.25, L.STAND_Z0),
-			Vector3(xo, yf - 0.25, L.STAND_Z0),
-			Vector3(xo, yb - 0.3, L.STAND_BACK_H),
-			Vector3(xi, yb - 0.3, L.STAND_BACK_H),
-			e
-		)
-		conc.quad(
-			Vector3(xi, yf - 0.25, 0.0),
-			Vector3(xo, yf - 0.25, 0.0),
-			Vector3(xo, yf - 0.25, L.STAND_Z0),
-			Vector3(xi, yf - 0.25, L.STAND_Z0),
-			Vector3(0, 1, 0)
-		)
-	conc.box(x0, x1, yb - 0.3, yb, 0.0, L.STAND_BACK_H)
-	root.add_child(conc.to_instance("Formigo", _mat(CONCRETE, 0.95)))
-	# Mur de davant amb la franja taronja. ref: makeWall()
-	var wall := MeshBuilder.new()
-	wall.box(x0, x1, yf - 0.25, yf, 0.0, L.STAND_Z0, 8.0)
-	root.add_child(wall.to_instance("Mur", _tex_mat("wall")))
-	# Part de dalt del mur del darrere, fosca. ref: T.dark
-	var dark := MeshBuilder.new()
-	dark.quad(
-		Vector3(x0, yb + 0.01, L.STAND_Z1),
-		Vector3(x1, yb + 0.01, L.STAND_Z1),
-		Vector3(x1, yb + 0.01, L.STAND_BACK_H),
-		Vector3(x0, yb + 0.01, L.STAND_BACK_H),
-		Vector3(0, 1, 0)
-	)
-	root.add_child(dark.to_instance("Fons", _mat(DARK), false))
-	# Coberta inclinada, amb gruix.
-	var roof := MeshBuilder.new()
-	var rf := L.ROOF_FRONT
-	var rb := L.ROOF_BACK
-	var t := 0.3
-	roof.quad(
-		Vector3(x0 - 1, rf.x, rf.y + t),
-		Vector3(x1 + 1, rf.x, rf.y + t),
-		Vector3(x1 + 1, rb.x, rb.y + t),
-		Vector3(x0 - 1, rb.x, rb.y + t),
+	root.add_child(ground.to_instance("Terreny", _turf_mat, false))
+	var road := MeshBuilder.new()
+	var z := L.ROAD_Z + 0.02
+	road.quad(
+		Vector3(x0, L.ROAD_Y0, z),
+		Vector3(x1, L.ROAD_Y0, z),
+		Vector3(x1, L.ROAD_Y1, z),
+		Vector3(x0, L.ROAD_Y1, z),
 		Vector3(0, 0, 1)
 	)
-	roof.quad(
-		Vector3(x0 - 1, rf.x, rf.y),
-		Vector3(x1 + 1, rf.x, rf.y),
-		Vector3(x1 + 1, rb.x, rb.y),
-		Vector3(x0 - 1, rb.x, rb.y),
-		Vector3(0, 0, -1)
-	)
-	roof.quad(
-		Vector3(x0 - 1, rb.x, rb.y),
-		Vector3(x1 + 1, rb.x, rb.y),
-		Vector3(x1 + 1, rb.x, rb.y + t),
-		Vector3(x0 - 1, rb.x, rb.y + t),
-		Vector3(0, -1, 0)
-	)
-	for s: float in [-1.0, 1.0]:
-		var xx := (x0 - 1) if s < 0.0 else (x1 + 1)
-		roof.quad(
-			Vector3(xx, rf.x, rf.y),
-			Vector3(xx, rb.x, rb.y),
-			Vector3(xx, rb.x, rb.y + t),
-			Vector3(xx, rf.x, rf.y + t),
-			Vector3(s, 0, 0)
-		)
-	root.add_child(roof.to_instance("Coberta", _mat(ROOF, 0.7)))
-	# Frontal de la coberta amb el nom del camp. ref: makeFascia()
-	var fascia := MeshBuilder.new()
-	var fy := rf.x
-	fascia.quad(
-		Vector3(x0 - 1, fy + 0.02, 11.2),
-		Vector3(x1 + 1, fy + 0.02, 11.2),
-		Vector3(x1 + 1, fy + 0.02, rf.y + t + 0.05),
-		Vector3(x0 - 1, fy + 0.02, rf.y + t + 0.05),
-		Vector3(0, 1, 0),
+	root.add_child(road.to_instance("Carretera", _mat(Color("3a3b3d"), 0.9), false))
+	var rail := MeshBuilder.new()
+	var ry := L.ROAD_Y0 + 0.4
+	rail.box(x0, x1, ry - 0.04, ry, z + 0.45, z + 0.75)
+	var x := x0
+	while x <= x1:
+		rail.box(x - 0.05, x + 0.05, ry, ry + 0.1, z, z + 0.75)
+		x += 4.0
+	root.add_child(rail.to_instance("Bionda", _mat(Color("b8bcbf"), 0.4), false))
+	return root
+
+
+# --- Tanques, xarxes, pancartes i bardissa ------------------------------------------------
+
+
+## Tram de reixa de a fins a b (simulació), de z0 a z0 + h, amb pals cada 2,5 m.
+static func _fence_run(
+	wire: MeshBuilder, steel: MeshBuilder, a: Vector2, b: Vector2, z0: float, h: float
+) -> void:
+	var len := a.distance_to(b)
+	var along_x := absf(a.y - b.y) < 0.01
+	var facing := Vector3(0, -signf(a.y), 0) if along_x else Vector3(-signf(a.x), 0, 0)
+	wire.quad(
+		Vector3(a.x, a.y, z0),
+		Vector3(b.x, b.y, z0),
+		Vector3(b.x, b.y, z0 + h),
+		Vector3(a.x, a.y, z0 + h),
+		facing,
 		Vector2.ZERO,
-		Vector2(2, 1)
+		Vector2(len, h)
 	)
-	var fm := _tex_mat("fascia", 0.6)
-	root.add_child(fascia.to_instance("Frontal", fm))
-	var fback := MeshBuilder.new()
-	fback.box(x0 - 1, x1 + 1, fy - 0.2, fy, 11.2, rf.y + t + 0.05, 0.0, 1.0, true)
-	root.add_child(fback.to_instance("FrontalDarrere", _mat(DARK)))
-	# Pilars.
-	var steel := MeshBuilder.new()
-	for cx in L.STAND_COLUMNS:
-		steel.box(cx - 0.18, cx + 0.18, yf + 0.42, yf + 0.78, 0.0, rf.y)
-	# Sense ombra: de nit els focus en farien unes falques fosques sobre el públic.
-	root.add_child(steel.to_instance("Pilars", _mat(STEEL, 0.5), false))
-	return root
-
-
-## Seients i públic (MultiMesh). ref: makeCrowd()
-func _crowd() -> Node3D:
-	var root := Node3D.new()
-	root.name = "Public"
-	var rng := RandomNumberGenerator.new()
-	rng.seed = 35
-	var seats: Array[Vector3] = []
-	var seat_cols: Array[Color] = []
-	var people: Array[Vector3] = []
-	var cells: Array[int] = []
-	var n_seats := int((L.STAND_X1 - L.STAND_X0) / SEAT_PITCH)
-	for r in L.STAND_ROWS:
-		var z := L.row_z(r)
-		var y := L.row_y(r) - 0.95
-		for i in n_seats:
-			var x := L.STAND_X0 + SEAT_PITCH * (i + 0.5)
-			var aisle := false
-			for a in AISLES:
-				aisle = aisle or absf(x - a) < AISLE_W * 0.5
-			if aisle:
-				continue
-			seats.append(Vector3(x, y, z))
-			seat_cols.append(SEAT_WHITE if (i + r) % 9 == 0 else SEAT_ORANGE)
-			if rng.randf() < OCCUPANCY:
-				var away := x > AWAY_X.x and x < AWAY_X.y and rng.randf() < 0.85
-				var cell := 48 + rng.randi() % 16 if away else rng.randi() % 48
-				people.append(Vector3(x + rng.randf_range(-0.05, 0.05), y + 0.12, z))
-				cells.append(cell)
-	# Seients.
-	var seat_mesh := MeshBuilder.new()
-	seat_mesh.box(-0.21, 0.21, -0.12, 0.22, 0.38, 0.45)
-	seat_mesh.box(-0.21, 0.21, -0.2, -0.12, 0.45, 0.85)
-	seat_mesh.box(-0.04, 0.04, -0.05, 0.05, 0.0, 0.38, 0.0, 1.0, false)
-	var sm := _mat(Color.WHITE, 0.6)
-	sm.vertex_color_use_as_albedo = true
-	var mm := MultiMesh.new()
-	mm.transform_format = MultiMesh.TRANSFORM_3D
-	mm.use_colors = true
-	mm.mesh = seat_mesh.to_mesh()
-	mm.instance_count = seats.size()
-	for i in seats.size():
-		var p := seats[i]
-		mm.set_instance_transform(i, Transform3D(Basis(), Coords.to_view(p.x, p.y, p.z)))
-		mm.set_instance_color(i, seat_cols[i])
-	var mmi := MultiMeshInstance3D.new()
-	mmi.name = "Seients"
-	mmi.multimesh = mm
-	mmi.material_override = sm
-	mmi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-	root.add_child(mmi)
-	# Persones: quads de 0,53 x 0,8 m mirant al camp, amb una cel·la de l'atles.
-	var quad := QuadMesh.new()
-	quad.size = Vector2(0.533, 0.8)
-	quad.center_offset = Vector3(0.0, 0.4, 0.0)
-	var pm := MultiMesh.new()
-	pm.transform_format = MultiMesh.TRANSFORM_3D
-	pm.use_custom_data = true
-	pm.mesh = quad
-	pm.instance_count = people.size()
-	for i in people.size():
-		var p := people[i]
-		pm.set_instance_transform(i, Transform3D(Basis(), Coords.to_view(p.x, p.y, p.z + 0.42)))
-		pm.set_instance_custom_data(i, Color(cells[i], rng.randf(), 0.0, 0.0))
-	var pmi := MultiMeshInstance3D.new()
-	pmi.name = "Persones"
-	pmi.multimesh = pm
-	pmi.material_override = _shader_mat(CROWD_SHADER, {"atlas": _tex("crowd")})
-	pmi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-	root.add_child(pmi)
-	return root
-
-
-# --- Tanques LED -------------------------------------------------------------------------
-
-
-## ref: T.led i el seu marc fosc (línies 1510–1513)
-func _led() -> Node3D:
-	var root := Node3D.new()
-	root.name = "LED"
-	var scr := MeshBuilder.new()
-	var frame := MeshBuilder.new()
-	var y := L.LED_Y
-	scr.quad(
-		Vector3(-L.LED_X, y, 0.05),
-		Vector3(L.LED_X, y, 0.05),
-		Vector3(L.LED_X, y, 0.95),
-		Vector3(-L.LED_X, y, 0.95),
-		Vector3(0, 1, 0),
-		Vector2.ZERO,
-		Vector2(L.LED_X * 2.0 / 64.0, 1.0)
-	)
-	frame.box(-L.LED_X - 0.1, L.LED_X + 0.1, y - 0.25, y - 0.005, 0.0, 1.0)
-	for s: float in [-1.0, 1.0]:
-		var x := s * L.LED_END_X
-		for span in L.LED_END_SPANS:
-			var len := (span.y - span.x) / 64.0
-			var u0 := Vector2(0.0 if s > 0.0 else len, 0.0)
-			var u1 := Vector2(len if s > 0.0 else 0.0, 1.0)
-			scr.quad(
-				Vector3(x, span.x, 0.05),
-				Vector3(x, span.y, 0.05),
-				Vector3(x, span.y, 0.95),
-				Vector3(x, span.x, 0.95),
-				Vector3(-s, 0, 0),
-				u0,
-				u1
-			)
-			frame.box(
-				minf(x + s * 0.005, x + s * 0.25),
-				maxf(x + s * 0.005, x + s * 0.25),
-				span.x - 0.1,
-				span.y + 0.1,
-				0.0,
-				1.0
-			)
-	root.add_child(
-		scr.to_instance("Pantalles", _shader_mat(LED_SHADER, {"ads": _tex("led")}), false)
-	)
-	root.add_child(frame.to_instance("Marcs", _mat(DARK)))
-	return root
-
-
-# --- Tanques i xarxes -----------------------------------------------------------------
+	var posts := ceili(len / 2.5)
+	for k in posts + 1:
+		var p := a.lerp(b, float(k) / posts)
+		steel.box(p.x - 0.03, p.x + 0.03, p.y - 0.03, p.y + 0.03, 0.0, z0 + h + 0.05)
+	var lo := Vector2(minf(a.x, b.x), minf(a.y, b.y)) - Vector2(0.025, 0.025)
+	var hi := Vector2(maxf(a.x, b.x), maxf(a.y, b.y)) + Vector2(0.025, 0.025)
+	steel.box(lo.x, hi.x, lo.y, hi.y, z0 + h, z0 + h + 0.05)
 
 
 func _fences() -> Node3D:
 	var root := Node3D.new()
 	root.name = "Tanques"
 	var steel := MeshBuilder.new()
-	# Xarxes altes darrere de les porteries. ref: T.net (línies 1540–1542)
-	var tall := MeshBuilder.new()
+	var wire := MeshBuilder.new()
+	var ax := L.APRON_X
+	# Passeig de l'oest: muret de formigó i reixa a sobre.
+	var wall := MeshBuilder.new()
+	wall.box(-ax, ax, L.WALK_Y - 0.22, L.WALK_Y, 0.0, 0.45)
+	root.add_child(wall.to_instance("Muret", _mat(CONCRETE, 0.95)))
+	var wy := L.WALK_Y - 0.1
+	_fence_run(wire, steel, Vector2(-ax, wy), Vector2(ax, wy), 0.45, L.FENCE_H - 0.45)
+	# Est i extrems: reixa més baixa.
+	var h := L.EAST_FENCE_H
+	_fence_run(wire, steel, Vector2(-ax, L.EAST_Y), Vector2(ax, L.EAST_Y), 0.0, h)
 	for s: float in [-1.0, 1.0]:
-		var x := s * L.BACKNET_X
-		var h := L.BACKNET_H
-		var w := L.BACKNET_Y
+		_fence_run(wire, steel, Vector2(s * ax, L.WALK_Y), Vector2(s * ax, L.EAST_Y), 0.0, h)
+	var wire_mat := _shader_mat(
+		NET_SHADER, {"cell": 0.07, "thread": 0.005, "haze": 0.04, "net_color": FENCE_GREEN}
+	)
+	root.add_child(wire.to_instance("Reixa", wire_mat, false))
+	# Xarxes altes de darrere les porteries.
+	var tall := MeshBuilder.new()
+	for n: Dictionary in [L.SOUTH_NET, L.NORTH_NET]:
+		var x: float = n["x"]
+		var y0: float = n["y0"]
+		var y1: float = n["y1"]
+		var nh: float = n["h"]
 		tall.quad(
-			Vector3(x, -w, 0),
-			Vector3(x, w, 0),
-			Vector3(x, w, h),
-			Vector3(x, -w, h),
-			Vector3(-s, 0, 0),
+			Vector3(x, y0, 0),
+			Vector3(x, y1, 0),
+			Vector3(x, y1, nh),
+			Vector3(x, y0, nh),
+			Vector3(-signf(x), 0, 0),
 			Vector2.ZERO,
-			Vector2(w * 2.0, h)
+			Vector2(y1 - y0, nh)
 		)
-		for py: float in [-16.0, -8.0, 0.0, 8.0, 16.0]:
-			steel.box(x - 0.06, x + 0.06, py - 0.06, py + 0.06, 0.0, h + 0.2)
+		var py := y0
+		while py <= y1 + 0.01:
+			steel.box(x - 0.07, x + 0.07, py - 0.07, py + 0.07, 0.0, nh + 0.2)
+			py += 4.0
 	var tall_mat := _shader_mat(
 		NET_SHADER,
-		{"cell": 0.25, "thread": 0.008, "haze": 0.0, "net_color": Color(0.75, 0.78, 0.76, 0.7)}
+		{"cell": 0.12, "thread": 0.005, "haze": 0.0, "net_color": Color(0.72, 0.75, 0.74, 0.45)}
 	)
-	root.add_child(tall.to_instance("XarxesFons", tall_mat, false))
-	# Tanca baixa de reixa al voltant del voral (no hi és a la web).
-	var low := MeshBuilder.new()
-	var hx := L.APRON_X
-	var y0 := L.APRON_Y0
-	var y1 := L.APRON_Y1
-	var runs: Array = [
-		[Vector2(-hx, y1), Vector2(hx, y1)],
-		[Vector2(-hx, y0), Vector2(-hx, y1)],
-		[Vector2(hx, y0), Vector2(hx, y1)],
-		[Vector2(-hx, y0), Vector2(L.STAND_X0 - 0.3, y0)],
-		[Vector2(L.STAND_X1 + 0.3, y0), Vector2(hx, y0)],
-	]
-	var fh := 1.1
-	for run: Array in runs:
-		var a: Vector2 = run[0]
-		var b: Vector2 = run[1]
-		var len := a.distance_to(b)
-		var facing := (
-			Vector3(0, -signf(a.y), 0) if absf(a.y - b.y) < 0.01 else Vector3(-signf(a.x), 0, 0)
-		)
-		low.quad(
-			Vector3(a.x, a.y, 0),
-			Vector3(b.x, b.y, 0),
-			Vector3(b.x, b.y, fh),
-			Vector3(a.x, a.y, fh),
-			facing,
-			Vector2.ZERO,
-			Vector2(len, fh)
-		)
-		var posts := ceili(len / 2.5)
-		for k in posts + 1:
-			var p := a.lerp(b, float(k) / posts)
-			steel.box(p.x - 0.03, p.x + 0.03, p.y - 0.03, p.y + 0.03, 0.0, fh + 0.05)
-		var lo := Vector2(minf(a.x, b.x), minf(a.y, b.y)) - Vector2(0.025, 0.025)
-		var hi := Vector2(maxf(a.x, b.x), maxf(a.y, b.y)) + Vector2(0.025, 0.025)
-		steel.box(lo.x, hi.x, lo.y, hi.y, fh, fh + 0.05)
-	var low_mat := _shader_mat(
-		NET_SHADER,
-		{"cell": 0.07, "thread": 0.005, "haze": 0.04, "net_color": Color(0.32, 0.4, 0.35, 1.0)}
-	)
-	root.add_child(low.to_instance("Reixa", low_mat, false))
+	root.add_child(tall.to_instance("XarxesAltes", tall_mat, false))
 	root.add_child(steel.to_instance("Pals", _mat(STEEL, 0.5)))
 	return root
+
+
+## Pancartes dels patrocinadors penjades a la tanca del passeig (a la web eren tanques LED).
+## Cada una mostra un dels vuit anuncis de led.png. ref: makeLED()
+func _banners() -> Node3D:
+	var root := Node3D.new()
+	root.name = "Pancartes"
+	var mb := MeshBuilder.new()
+	var y := L.WALK_Y + 0.02
+	var xs: Array[float] = [-42.0, -34.5, -24.0, -17.5, 17.5, 24.0, 34.5, 42.0]
+	for i in xs.size():
+		var x0 := xs[i] - 3.2
+		var x1 := xs[i] + 3.2
+		mb.quad(
+			Vector3(x0, y, 0.55),
+			Vector3(x1, y, 0.55),
+			Vector3(x1, y, 1.35),
+			Vector3(x0, y, 1.35),
+			Vector3(0, 1, 0),
+			Vector2(i / 8.0, 0.0),
+			Vector2((i + 1) / 8.0, 1.0)
+		)
+	root.add_child(mb.to_instance("Lones", _tex_mat("led", 0.75), false))
+	return root
+
+
+## Bardissa de l'est, de 3 m, per trams d'alçada una mica diferent.
+func _hedge() -> MeshInstance3D:
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 9
+	var mb := MeshBuilder.new()
+	var x := -L.APRON_X - 8.0
+	while x < L.APRON_X + 8.0:
+		var h := L.HEDGE_H + rng.randf_range(-0.35, 0.3)
+		var d := rng.randf_range(-0.15, 0.15)
+		mb.box(x, x + 3.05, L.HEDGE_Y + d, L.HEDGE_Y + L.HEDGE_D, 0.0, h)
+		x += 3.0
+	return mb.to_instance("Bardissa", _shader_mat(HEDGE_SHADER, {"noise_tex": _tex("noise")}))
 
 
 # --- Torres de llum ---------------------------------------------------------------------
 
 
-func _towers() -> Node3D:
+func _poles() -> Node3D:
 	var root := Node3D.new()
 	root.name = "Torres"
 	_lamp_mat = StandardMaterial3D.new()
@@ -634,69 +499,44 @@ func _towers() -> Node3D:
 	_lamp_mat.emission = Color(1.0, 0.95, 0.85)
 	_lamp_mat.roughness = 0.4
 	var pole_mat := _mat(STEEL, 0.5)
-	var back_mat := _mat(STEEL, 0.5)
-	var flare_tex := GradientTexture2D.new()
-	flare_tex.fill = GradientTexture2D.FILL_RADIAL
-	flare_tex.fill_from = Vector2(0.5, 0.5)
-	flare_tex.fill_to = Vector2(1.0, 0.5)
-	var grad := Gradient.new()
-	grad.set_color(0, Color(1.0, 0.97, 0.88, 0.75))
-	grad.set_color(1, Color(1.0, 0.9, 0.75, 0.0))
-	grad.add_point(0.25, Color(1.0, 0.93, 0.8, 0.25))
-	flare_tex.gradient = grad
-	var flare_mat := StandardMaterial3D.new()
-	flare_mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
-	flare_mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
-	flare_mat.blend_mode = BaseMaterial3D.BLEND_MODE_ADD
-	flare_mat.billboard_mode = BaseMaterial3D.BILLBOARD_ENABLED
-	flare_mat.albedo_texture = flare_tex
-	flare_mat.no_depth_test = false
-	flare_mat.disable_fog = true
-	for t in L.TOWERS:
+	var flare_mat := _flare_material()
+	for p in L.POLES:
 		var tower := Node3D.new()
 		tower.name = "Torre"
 		var pole := MeshInstance3D.new()
 		var cm := CylinderMesh.new()
-		cm.top_radius = 0.22
-		cm.bottom_radius = 0.42
-		cm.height = L.TOWER_H + 1.2
-		cm.radial_segments = 12
+		cm.top_radius = 0.14
+		cm.bottom_radius = 0.26
+		cm.height = L.POLE_H + 0.6
+		cm.radial_segments = 10
 		pole.mesh = cm
-		pole.position = Coords.to_view(t.x, t.y, cm.height * 0.5)
+		pole.position = Coords.to_view(p.x, p.y, cm.height * 0.5)
 		pole.material_override = pole_mat
 		tower.add_child(pole)
 		# Capçal orientat cap al camp, amb els focus a la cara de davant.
 		var head := Node3D.new()
-		var hp := _tower_head_pos(t)
-		var aim := _tower_aim(t)
+		var hp := _pole_head_pos(p)
 		head.position = hp
-		head.basis = Basis.looking_at(aim - hp, Vector3.UP)
+		head.basis = Basis.looking_at(_pole_aim(p) - hp, Vector3.UP)
 		var box := MeshInstance3D.new()
 		var bm := BoxMesh.new()
-		bm.size = Vector3(5.8, 3.0, 0.3)
+		bm.size = Vector3(3.4, 1.7, 0.25)
 		box.mesh = bm
-		box.material_override = back_mat
+		box.material_override = pole_mat
 		head.add_child(box)
 		var lamps := MeshInstance3D.new()
 		var qm := QuadMesh.new()
-		qm.size = Vector2(5.6, 2.8)
+		qm.size = Vector2(3.2, 1.5)
 		lamps.mesh = qm
-		lamps.position = Vector3(0, 0, -0.16)
+		lamps.position = Vector3(0, 0, -0.14)
 		lamps.rotation = Vector3(0, PI, 0)
 		lamps.material_override = _lamp_mat
 		head.add_child(lamps)
-		var deck := MeshInstance3D.new()
-		var dm := BoxMesh.new()
-		dm.size = Vector3(6.2, 0.12, 1.4)
-		deck.mesh = dm
-		deck.position = Vector3(0, -1.7, 0.1)
-		deck.material_override = pole_mat
-		head.add_child(deck)
 		var flare := MeshInstance3D.new()
 		var fq := QuadMesh.new()
-		fq.size = Vector2(16.0, 16.0)
+		fq.size = Vector2(10.0, 10.0)
 		flare.mesh = fq
-		flare.position = Vector3(0, 0, -1.0)
+		flare.position = Vector3(0, 0, -0.8)
 		flare.material_override = flare_mat
 		flare.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 		head.add_child(flare)
@@ -706,10 +546,32 @@ func _towers() -> Node3D:
 	return root
 
 
-# --- Banquetes --------------------------------------------------------------------------
+## Halo dels focus de nit. ref: drawGlows()
+static func _flare_material() -> StandardMaterial3D:
+	var flare_tex := GradientTexture2D.new()
+	flare_tex.fill = GradientTexture2D.FILL_RADIAL
+	flare_tex.fill_from = Vector2(0.5, 0.5)
+	flare_tex.fill_to = Vector2(1.0, 0.5)
+	var grad := Gradient.new()
+	grad.set_color(0, Color(1.0, 0.97, 0.88, 0.75))
+	grad.set_color(1, Color(1.0, 0.9, 0.75, 0.0))
+	grad.add_point(0.25, Color(1.0, 0.93, 0.8, 0.25))
+	flare_tex.gradient = grad
+	var m := StandardMaterial3D.new()
+	m.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	m.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	m.blend_mode = BaseMaterial3D.BLEND_MODE_ADD
+	m.billboard_mode = BaseMaterial3D.BILLBOARD_ENABLED
+	m.albedo_texture = flare_tex
+	m.disable_fog = true
+	return m
 
 
-## Banquetes dels dos equips, al costat de la càmera (no hi són a la web).
+# --- Banquetes i públic -------------------------------------------------------------------
+
+
+## Banquetes dels dos equips al passeig, a la línia del mig, amb el sostre vermell (com a la
+## foto aèria), i la taula de l'àrbitre auxiliar al mig.
 func _benches() -> Node3D:
 	var root := Node3D.new()
 	root.name = "Banquetes"
@@ -729,18 +591,17 @@ func _benches() -> Node3D:
 		_ybox(shell, x0, x1, back - f * 0.08, back, 0.0, h)
 		_ybox(shell, x0 - 0.08, x0, back, front, 0.0, h)
 		_ybox(shell, x1, x1 + 0.08, back, front, 0.0, h)
-		_ybox(roof, x0 - 0.1, x1 + 0.1, back - f * 0.1, front + f * 0.3, h, h + 0.06)
+		_ybox(roof, x0 - 0.1, x1 + 0.1, back - f * 0.1, front + f * 0.3, h, h + 0.08)
 		_ybox(seat, x0 + 0.2, x1 - 0.2, back + f * 0.05, back + f * 0.5, 0.42, 0.5)
 		_ybox(seat, x0 + 0.2, x1 - 0.2, back + f * 0.02, back + f * 0.1, 0.5, 0.95)
 		var band := MeshBuilder.new()
-		_ybox(band, x0 - 0.1, x1 + 0.1, front + f * 0.3, front + f * 0.36, h - 0.18, h + 0.1)
+		_ybox(band, x0 - 0.1, x1 + 0.1, front + f * 0.3, front + f * 0.36, h - 0.18, h + 0.08)
 		root.add_child(band.to_instance("Franja%d" % i, _mat(colors[i], 0.5)))
+	_ybox(seat, -0.8, 0.8, front, front - f * 0.7, 0.72, 0.78)
+	_ybox(seat, -0.7, 0.7, front - f * 0.1, front - f * 0.6, 0.0, 0.72)
 	root.add_child(shell.to_instance("Estructura", _mat(Color("dfe3e6"), 0.4)))
 	root.add_child(seat.to_instance("Bancs", _mat(Color("3a3f45"), 0.6)))
-	# Sostre de policarbonat fumat.
-	var rm := _mat(Color(0.55, 0.62, 0.68, 0.45), 0.2)
-	rm.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
-	root.add_child(roof.to_instance("Sostre", rm))
+	root.add_child(roof.to_instance("Sostre", _mat(BENCH_ROOF, 0.6)))
 	return root
 
 
@@ -751,32 +612,199 @@ static func _ybox(
 	b.box(x0, x1, minf(ya, yb), maxf(ya, yb), z0, z1)
 
 
-# --- Casa del club, ciutat i pins -------------------------------------------------------
-
-
-func _facade_mat(tex: String, cells: Vector2, lit: float) -> ShaderMaterial:
-	return _shader_mat(FACADE_SHADER, {"tex": _tex(tex), "cells": cells, "lit_ratio": lit})
-
-
-## ref: makeClubhouse() i box(cw, ...) (línia 1518)
-func _clubhouse() -> Node3D:
-	var root := Node3D.new()
-	root.name = "CasaClub"
-	var r := L.CLUBHOUSE
-	var walls := MeshBuilder.new()
-	walls.box(r.position.x, r.end.x, r.position.y, r.end.y, 0.0, L.CLUBHOUSE_H, 15.0, 1.0, false)
-	root.add_child(walls.to_instance("Parets", _facade_mat("clubhouse", Vector2(9.0, 3.0), 0.7)))
-	var roof := MeshBuilder.new()
-	roof.box(
-		r.position.x - 0.3,
-		r.end.x + 0.3,
-		r.position.y - 0.3,
-		r.end.y + 0.3,
-		L.CLUBHOUSE_H,
-		L.CLUBHOUSE_H + 0.35
+## Públic dret al passeig: un quad per persona (MultiMesh) amb l'atles people.png. Els del
+## Polo, al sector del nord. ref: makeCrowd()
+func _spectators() -> MultiMeshInstance3D:
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 35
+	var quad := QuadMesh.new()
+	quad.size = Vector2(0.6, 1.8)
+	quad.center_offset = Vector3(0.0, 0.9, 0.0)
+	var mm := MultiMesh.new()
+	mm.transform_format = MultiMesh.TRANSFORM_3D
+	mm.use_custom_data = true
+	mm.mesh = quad
+	mm.instance_count = L.SPECTATORS
+	var bench_x := L.BENCH_W + absf(L.BENCH_X[1])
+	for i in L.SPECTATORS:
+		var x := rng.randf_range(-HL, HL)
+		var y := rng.randf_range(L.WALK_Y + 0.4, L.WALK_Y + 1.8)
+		if absf(x) < bench_x:
+			# Darrere les banquetes hi ha poc lloc.
+			y = rng.randf_range(L.WALK_Y + 0.4, L.BENCH_Y1 - 0.4)
+		var away := x > 18.0 and rng.randf() < 0.8
+		var cell := 11 + rng.randi() % 5 if away else rng.randi() % 11
+		mm.set_instance_transform(i, Transform3D(Basis(), Coords.to_view(x, y, 0.0)))
+		mm.set_instance_custom_data(i, Color(cell, rng.randf(), 0.0, 0.0))
+	var mmi := MultiMeshInstance3D.new()
+	mmi.name = "Public"
+	mmi.multimesh = mm
+	mmi.material_override = _shader_mat(
+		CROWD_SHADER, {"atlas": _tex("people"), "grid": Vector2(8, 2)}
 	)
-	root.add_child(roof.to_instance("Teulada", _mat(ROOF, 0.8)))
+	mmi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	return mmi
+
+
+# --- Casetes del club, carrer i ciutat ------------------------------------------------------
+
+
+## Casetes del club al nord, darrere la porteria. ref: makeClubhouse() per al rètol
+func _huts() -> Node3D:
+	var root := Node3D.new()
+	root.name = "CasetesClub"
+	for i in L.HUTS.size():
+		var hut: Array = L.HUTS[i]
+		var r: Rect2 = hut[0]
+		var h: float = hut[1]
+		var walls := MeshBuilder.new()
+		var wall_mat: Material
+		if hut[2] == "club":
+			walls.box(r.position.x, r.end.x, r.position.y, r.end.y, 0.0, h, 12.0, 1.0, false)
+			wall_mat = _facade_mat("clubhouse", Vector2(9.0, 3.0), 0.7)
+		else:
+			walls.box(r.position.x, r.end.x, r.position.y, r.end.y, 0.0, h, 0.0, 1.0, false)
+			wall_mat = _mat(Color(hut[2]), 0.85)
+		root.add_child(walls.to_instance("Caseta%d" % i, wall_mat))
+		var roof := MeshBuilder.new()
+		roof.box(
+			r.position.x - 0.25, r.end.x + 0.25, r.position.y - 0.25, r.end.y + 0.25, h, h + 0.22
+		)
+		root.add_child(roof.to_instance("Teulada%d" % i, _mat(Color(hut[3]), 0.7)))
 	return root
+
+
+## Carrer Galícia: cases amb teulada de teula, cotxes aparcats, fanals i arbres.
+func _street() -> Node3D:
+	var root := Node3D.new()
+	root.name = "Carrer"
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 41
+	# Cases de dues o tres plantes a l'altra banda del carrer.
+	var walls := MeshBuilder.new()
+	var roofs := MeshBuilder.new()
+	var x := -85.0
+	while x < 44.0:
+		var w := rng.randf_range(8.0, 12.0)
+		var d := rng.randf_range(9.0, 11.5)
+		var h := 6.2 if rng.randf() < 0.75 else 9.0
+		var y1 := L.HOUSES_Y
+		var y0 := y1 - d
+		walls.box(x, x + w, y0, y1, 0.0, h, 24.0, h / 30.0, false)
+		_gable(roofs, x - 0.3, x + w + 0.3, y0 - 0.4, y1 + 0.4, h, 2.2)
+		x += w + rng.randf_range(0.8, 3.0)
+	root.add_child(
+		walls.to_instance("Cases", _facade_mat("facade_flats", Vector2(8.0, 10.0), 0.45))
+	)
+	root.add_child(roofs.to_instance("Teulades", _mat(TILE_ROOF, 0.8)))
+	root.add_child(_cars(rng))
+	# Fanals a la vorera.
+	var poles := MeshBuilder.new()
+	var heads := MeshBuilder.new()
+	_street_lamp_mat = _emissive(Color(1.0, 0.8, 0.5))
+	var lx := -70.0
+	while lx <= 40.0:
+		var ly := L.SIDEWALK_Y - 0.6
+		poles.box(lx - 0.07, lx + 0.07, ly - 0.07, ly + 0.07, 0.0, 7.5)
+		poles.box(lx - 0.05, lx + 0.05, ly - 1.4, ly, 7.4, 7.5)
+		heads.box(lx - 0.3, lx + 0.3, ly - 1.7, ly - 1.1, 7.2, 7.4)
+		lx += 22.0
+	root.add_child(poles.to_instance("Fanals", _mat(STEEL, 0.5)))
+	root.add_child(heads.to_instance("Llums", _street_lamp_mat, false))
+	# Arbres de la franja de darrere la tanca.
+	var trees := MeshBuilder.new()
+	var tops := MeshBuilder.new()
+	for t in L.street_trees():
+		trees.cross_quad(t.x, t.y, 6.5, 0.0, 7.5, PI * 0.25)
+		var r := 2.4
+		tops.quad(
+			Vector3(t.x - r, t.y + r, 4.6),
+			Vector3(t.x + r, t.y + r, 4.6),
+			Vector3(t.x + r, t.y - r, 4.6),
+			Vector3(t.x - r, t.y - r, 4.6),
+			Vector3(0, 0, 1)
+		)
+	root.add_child(
+		trees.to_instance(
+			"Arbres", _shader_mat(FOLIAGE_SHADER, {"tex": _tex("tree"), "sway": 0.06})
+		)
+	)
+	root.add_child(
+		tops.to_instance(
+			"Copes", _shader_mat(FOLIAGE_SHADER, {"tex": _tex("pine_top"), "sway": 0.0})
+		)
+	)
+	return root
+
+
+## Cotxes aparcats al costat del camp: carrosseria (amb color) i vidres.
+func _cars(rng: RandomNumberGenerator) -> Node3D:
+	var root := Node3D.new()
+	root.name = "Cotxes"
+	var body := MeshBuilder.new()
+	body.box(-2.1, 2.1, -0.87, 0.87, 0.28, 1.0)
+	var cabin := MeshBuilder.new()
+	cabin.box(-1.2, 1.0, -0.78, 0.78, 1.0, 1.48)
+	var spots: Array[Vector2] = []
+	var cx := -80.0
+	while cx < 40.0:
+		if rng.randf() < 0.75:
+			spots.append(Vector2(cx, L.STREET_Y0 - 1.2))
+		cx += rng.randf_range(4.8, 6.5)
+	var bodies := MultiMesh.new()
+	bodies.transform_format = MultiMesh.TRANSFORM_3D
+	bodies.use_colors = true
+	bodies.mesh = body.to_mesh()
+	bodies.instance_count = spots.size()
+	var cabins := MultiMesh.new()
+	cabins.transform_format = MultiMesh.TRANSFORM_3D
+	cabins.mesh = cabin.to_mesh()
+	cabins.instance_count = spots.size()
+	for i in spots.size():
+		var t := Transform3D(Basis(), Coords.to_view(spots[i].x, spots[i].y, 0.0))
+		bodies.set_instance_transform(i, t)
+		bodies.set_instance_color(i, CAR_COLORS[rng.randi() % CAR_COLORS.size()])
+		cabins.set_instance_transform(i, t)
+	var car_mat := _mat(Color.WHITE, 0.3)
+	car_mat.vertex_color_use_as_albedo = true
+	car_mat.metallic = 0.4
+	var bmi := MultiMeshInstance3D.new()
+	bmi.name = "Carrosseries"
+	bmi.multimesh = bodies
+	bmi.material_override = car_mat
+	root.add_child(bmi)
+	var cmi := MultiMeshInstance3D.new()
+	cmi.name = "Vidres"
+	cmi.multimesh = cabins
+	cmi.material_override = _mat(Color("1a2028"), 0.15)
+	root.add_child(cmi)
+	return root
+
+
+## Teulada a dues aigües amb el carener paral·lel a x.
+static func _gable(
+	b: MeshBuilder, x0: float, x1: float, y0: float, y1: float, z: float, rise: float
+) -> void:
+	var ym := (y0 + y1) * 0.5
+	var zt := z + rise
+	b.quad(
+		Vector3(x0, y1, z),
+		Vector3(x1, y1, z),
+		Vector3(x1, ym, zt),
+		Vector3(x0, ym, zt),
+		Vector3(0, 1, 1)
+	)
+	b.quad(
+		Vector3(x1, y0, z),
+		Vector3(x0, y0, z),
+		Vector3(x0, ym, zt),
+		Vector3(x1, ym, zt),
+		Vector3(0, -1, 1)
+	)
+	for s: float in [-1.0, 1.0]:
+		var xx := x0 if s < 0.0 else x1
+		var pts: Array[Vector3] = [Vector3(xx, y0, z), Vector3(xx, y1, z), Vector3(xx, ym, zt)]
+		b.polygon(pts, Vector3(s, 0, 0))
 
 
 ## Hospital i blocs de pisos al fons. ref: línies 1520–1524
@@ -786,24 +814,9 @@ func _city() -> Node3D:
 	var hosp := MeshBuilder.new()
 	var roofs := MeshBuilder.new()
 	var h := L.HOSPITAL
-	hosp.box(
-		h.position.x,
-		h.end.x,
-		h.position.y,
-		h.end.y,
-		0.0,
-		L.HOSPITAL_H,
-		24.0,
-		L.HOSPITAL_H / 30.0,
-		false
-	)
-	roofs.quad(
-		Vector3(h.position.x, h.end.y, L.HOSPITAL_H),
-		Vector3(h.end.x, h.end.y, L.HOSPITAL_H),
-		Vector3(h.end.x, h.position.y, L.HOSPITAL_H),
-		Vector3(h.position.x, h.position.y, L.HOSPITAL_H),
-		Vector3(0, 0, 1)
-	)
+	var hh := L.HOSPITAL_H
+	hosp.box(h.position.x, h.end.x, h.position.y, h.end.y, 0.0, hh, 24.0, hh / 30.0, false)
+	_flat_roof(roofs, h, hh)
 	root.add_child(
 		hosp.to_instance(
 			"Hospital", _facade_mat("facade_hospital", Vector2(8.0, 10.0), 0.55), false
@@ -815,13 +828,7 @@ func _city() -> Node3D:
 		var b: Rect2 = blk[0]
 		var bh: float = blk[1]
 		flats.box(b.position.x, b.end.x, b.position.y, b.end.y, 0.0, bh, 24.0, bh / 30.0, false)
-		roofs.quad(
-			Vector3(b.position.x, b.end.y, bh),
-			Vector3(b.end.x, b.end.y, bh),
-			Vector3(b.end.x, b.position.y, bh),
-			Vector3(b.position.x, b.position.y, bh),
-			Vector3(0, 0, 1)
-		)
+		_flat_roof(roofs, b, bh)
 	root.add_child(
 		flats.to_instance("Pisos", _facade_mat("facade_flats", Vector2(8.0, 10.0), 0.62), false)
 	)
@@ -829,21 +836,30 @@ func _city() -> Node3D:
 	return root
 
 
-## Pins pinyers: quads creuats (com a la web) i una copa plana per veure'ls des de dalt.
-## ref: línies 1525–1539
-func _pines() -> Node3D:
+static func _flat_roof(b: MeshBuilder, r: Rect2, z: float) -> void:
+	b.quad(
+		Vector3(r.position.x, r.end.y, z),
+		Vector3(r.end.x, r.end.y, z),
+		Vector3(r.end.x, r.position.y, z),
+		Vector3(r.position.x, r.position.y, z),
+		Vector3(0, 0, 1)
+	)
+
+
+## Pins pinyers (quads creuats com a la web, amb la copa plana per veure'ls des de dalt) i
+## arbustos al talús, al camp del sud i darrere les casetes. ref: makePine()
+func _vegetation() -> Node3D:
 	var root := Node3D.new()
-	root.name = "Pins"
-	var rnd := StadiumLayout.ParkMiller.new()
-	L.city_blocks(rnd)
+	root.name = "Vegetacio"
+	var veg := L.vegetation()
 	var side := MeshBuilder.new()
 	var top := MeshBuilder.new()
-	for t in L.pines(rnd):
-		var w := 11.0 * t.z
-		var h := 12.0 * t.z
-		side.cross_quad(t.x, t.y, w, 0.0, h)
+	for t: Vector4 in veg["pines"]:
+		var w := 11.0 * t.w
+		var h := 12.0 * t.w
+		side.cross_quad(t.x, t.y, w, t.z, t.z + h, PI * 0.25)
 		var r := w * 0.36
-		var zc := h * 0.72
+		var zc := t.z + h * 0.72
 		top.quad(
 			Vector3(t.x - r, t.y + r, zc),
 			Vector3(t.x + r, t.y + r, zc),
@@ -851,10 +867,29 @@ func _pines() -> Node3D:
 			Vector3(t.x - r, t.y - r, zc),
 			Vector3(0, 0, 1)
 		)
-	root.add_child(side.to_instance("Arbres", _shader_mat(FOLIAGE_SHADER, {"tex": _tex("pine")})))
-	root.add_child(
-		top.to_instance(
-			"Copes", _shader_mat(FOLIAGE_SHADER, {"tex": _tex("pine_top"), "sway": 0.0})
+	var bushes := MeshBuilder.new()
+	for b: Vector4 in veg["bushes"]:
+		bushes.cross_quad(b.x, b.y, 4.0 * b.w, b.z - 0.2, b.z + 2.8 * b.w, PI * 0.25)
+	var foliage := func(tex: String, sway: float) -> ShaderMaterial:
+		return _shader_mat(FOLIAGE_SHADER, {"tex": _tex(tex), "sway": sway})
+	root.add_child(side.to_instance("Pins", foliage.call("pine", 0.12)))
+	root.add_child(top.to_instance("Copes", foliage.call("pine_top", 0.0)))
+	root.add_child(bushes.to_instance("Arbustos", foliage.call("pine_top", 0.03), false))
+	return root
+
+
+## Dues porteries de recanvi al sud, entre la línia de fons i la xarxa alta (a la foto
+## aèria es veuen al costat de l'est).
+func _spare_goals() -> Node3D:
+	var root := Node3D.new()
+	root.name = "PorteriesRecanvi"
+	for y: float in [11.0, 16.0]:
+		var holder := Node3D.new()
+		# GoalView es construeix a x = HL: es porta al seu lloc i es gira cap al camp.
+		holder.transform = (
+			Transform3D(Basis(Vector3.UP, PI), Coords.to_view(-HL - 5.6, y, 0.0))
+			* Transform3D(Basis(), Vector3(-HL, 0.0, 0.0))
 		)
-	)
+		holder.add_child(GoalView.new(1))
+		root.add_child(holder)
 	return root

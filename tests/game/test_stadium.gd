@@ -1,5 +1,6 @@
-# Proves de l'estadi de la fase 3 que no necessiten pantalla: la disposició (igual que la
-# web), els efectes que depenen del partit, els presets de qualitat i la construcció.
+# Proves del camp (fase 3) que no necessiten pantalla: la disposició (el camp real de
+# l'Iluro, amb la ciutat del fons de la web), els efectes que depenen del partit, els
+# presets de qualitat i la construcció.
 extends GdUnitTestSuite
 
 const HL := Constants.HL
@@ -9,8 +10,8 @@ const GHW := Constants.GHW
 
 
 ## Valors de referència calculats amb el codi de glInit() de la web (generador amb
-## llavor 11): 26 blocs de pisos i 69 pins.
-func test_ciutat_i_pins_com_la_web() -> void:
+## llavor 11): 26 blocs de pisos.
+func test_ciutat_com_la_web() -> void:
 	var rnd := StadiumLayout.ParkMiller.new()
 	var blocks := StadiumLayout.city_blocks(rnd)
 	assert_int(blocks.size()).is_equal(26)
@@ -20,31 +21,48 @@ func test_ciutat_i_pins_com_la_web() -> void:
 	assert_float(first.size.x).is_equal_approx(22.85649, 1e-3)
 	assert_float(first.size.y).is_equal_approx(10.54182, 1e-3)
 	assert_float(blocks[0][1]).is_equal_approx(26.20879, 1e-3)
-	var pines := StadiumLayout.pines(rnd)
-	assert_int(pines.size()).is_equal(69)
-	assert_vector(pines[0]).is_equal_approx(
-		Vector3(-73.00986, -81.64344, 1.20151), Vector3.ONE * 1e-3
-	)
-	assert_vector(pines[-1]).is_equal_approx(
-		Vector3(-68.16135, 29.86985, 0.97379), Vector3.ONE * 1e-3
-	)
 
 
-func test_files_de_la_grada() -> void:
-	assert_float(StadiumLayout.row_z(0)).is_equal_approx(StadiumLayout.STAND_Z0, 1e-6)
-	assert_float(StadiumLayout.row_z(StadiumLayout.STAND_ROWS - 1)).is_equal_approx(
-		StadiumLayout.STAND_Z1, 1e-6
+func test_talus_i_carretera_de_l_est() -> void:
+	assert_float(StadiumLayout.ground_z(0.0)).is_equal(0.0)
+	assert_float(StadiumLayout.ground_z(StadiumLayout.SLOPE_Y0)).is_equal(0.0)
+	assert_float(StadiumLayout.ground_z(StadiumLayout.ROAD_Y0)).is_equal_approx(
+		StadiumLayout.ROAD_Z, 1e-6
 	)
-	assert_float(StadiumLayout.row_y(0)).is_equal_approx(StadiumLayout.STAND_YF, 1e-6)
-	assert_float(StadiumLayout.row_y(StadiumLayout.STAND_ROWS)).is_equal_approx(
-		StadiumLayout.STAND_YB, 1e-6
-	)
+	var mid := (StadiumLayout.ROAD_Y0 + StadiumLayout.ROAD_Y1) * 0.5
+	assert_float(StadiumLayout.ground_z(mid)).is_equal_approx(StadiumLayout.ROAD_Z, 1e-6)
+	assert_float(StadiumLayout.ground_z(500.0)).is_equal_approx(StadiumLayout.SLOPE_TOP.y, 1e-6)
+	# La càmera TV és a sobre de la carretera.
+	assert_float(StadiumLayout.TV_CAM.x).is_between(StadiumLayout.ROAD_Y0, StadiumLayout.ROAD_Y1)
 
 
-func test_el_sol_ve_de_darrere_la_grada() -> void:
+## Res del costat de l'est no pot tapar la vista TV: entre la càmera i el camp (fins on la
+## vista toca a terra, uns 22 m dins del camp), tot ha de quedar per sota de la visual.
+func test_res_no_tapa_la_camera_tv() -> void:
+	var cam := StadiumLayout.TV_CAM
+	var y_ground := 22.0
+	var sight := func(y: float) -> float: return cam.y * (y - y_ground) / (cam.x - y_ground)
+	var veg := StadiumLayout.vegetation()
+	var all: Array[Vector4] = []
+	all.append_array(veg["pines"])
+	all.append_array(veg["bushes"])
+	for t in all:
+		if t.y > y_ground and t.y < cam.x and absf(t.x) < StadiumLayout.TV_CAM_X + 10.0:
+			var top := t.z + 12.0 * t.w
+			if veg["bushes"].has(t):
+				top = t.z + 2.8 * t.w
+			assert_float(top).override_failure_message(str(t)).is_less(sight.call(t.y))
+	var hedge_top := StadiumLayout.HEDGE_H + 0.3
+	assert_float(hedge_top).is_less(sight.call(StadiumLayout.HEDGE_Y))
+	for p in StadiumLayout.POLES:
+		if p.y > 0.0:
+			assert_float(absf(p.x)).is_greater(StadiumLayout.TV_CAM_X + 6.0)
+
+
+func test_el_sol_ve_de_darrere_el_passeig() -> void:
 	var sun := StadiumLayout.sun_view()
 	assert_float(sun.length()).is_equal_approx(1.0, 1e-5)
-	# Godot: Y amunt i −Z cap a la grada (y negativa de la simulació).
+	# Godot: Y amunt i −Z cap al passeig (y negativa de la simulació).
 	assert_bool(sun.y > 0.4 and sun.z < 0.0 and sun.x < 0.0).is_true()
 
 
@@ -84,16 +102,6 @@ func test_la_repeticio_torna_a_moure_la_xarxa() -> void:
 	fx.reset()
 	assert_int(fx.net_side).is_equal(0)
 	assert_float(fx.crowd_jump).is_equal(0.0)
-
-
-## Cada 5 s les tanques passen a l'anunci següent (1/8 de la textura) en 0,6 s.
-func test_desplacament_de_les_tanques_led() -> void:
-	assert_float(StadiumFx.led_scroll(0.0)).is_equal(0.0)
-	assert_float(StadiumFx.led_scroll(0.3)).is_equal_approx(0.0625, 1e-6)
-	assert_float(StadiumFx.led_scroll(2.0)).is_equal_approx(0.125, 1e-6)
-	assert_float(StadiumFx.led_scroll(5.0)).is_equal_approx(0.125, 1e-6)
-	assert_float(StadiumFx.led_scroll(5.6)).is_equal_approx(0.25, 1e-6)
-	assert_float(StadiumFx.led_scroll(12.0)).is_equal_approx(0.375, 1e-6)
 
 
 # --- Qualitat ---------------------------------------------------------------------------
@@ -173,37 +181,38 @@ func test_xarxa_de_la_porteria() -> void:
 # --- Construcció -------------------------------------------------------------------------
 
 
-func test_l_estadi_es_construeix_sencer() -> void:
+func test_el_camp_es_construeix_sencer() -> void:
 	var st: Stadium = auto_free(load("res://scenes/stadium.tscn").instantiate())
 	add_child(st)
 	for n: String in [
 		"Entorn",
 		"Sol",
 		"Terra",
-		"Grada",
-		"Public",
-		"LED",
+		"Talus",
 		"Tanques",
+		"Pancartes",
+		"Bardissa",
 		"Torres",
 		"Banquetes",
-		"CasaClub",
+		"Public",
+		"CasetesClub",
+		"Carrer",
 		"Ciutat",
-		"Pins",
+		"Vegetacio",
 		"PorteriaEsquerra",
-		"PorteriaDreta"
+		"PorteriaDreta",
+		"PorteriesRecanvi",
 	]:
 		assert_object(st.get_node_or_null(n)).override_failure_message(n).is_not_null()
+	# No hi ha grada.
+	assert_object(st.get_node_or_null("Grada")).is_null()
 	var spots := st.find_children("*", "SpotLight3D", true, false)
-	assert_int(spots.size()).is_equal(4)
+	assert_int(spots.size()).is_equal(StadiumLayout.POLES.size())
 	for sp: SpotLight3D in spots:
-		# L'estadi fix no fa ombra amb els focus.
+		# El camp fix no fa ombra amb els focus.
 		assert_int(sp.shadow_caster_mask & Stadium.STATIC_LAYER).is_equal(0)
-	var seats: MultiMeshInstance3D = st.get_node("Public/Seients")
-	var people: MultiMeshInstance3D = st.get_node("Public/Persones")
-	var ns := seats.multimesh.instance_count
-	var np := people.multimesh.instance_count
-	assert_int(ns).is_greater(800)
-	assert_float(float(np) / ns).is_between(Stadium.OCCUPANCY - 0.06, Stadium.OCCUPANCY + 0.06)
+	var people: MultiMeshInstance3D = st.get_node("Public")
+	assert_int(people.multimesh.instance_count).is_equal(StadiumLayout.SPECTATORS)
 	st.set_night(false)
 	assert_bool((st.get_node("Sol") as Light3D).visible).is_true()
 	assert_bool((spots[0] as Light3D).visible).is_false()

@@ -491,11 +491,12 @@ Les durades són orientatives i suposen una sola persona a temps parcial.
 - A 1440p, ≥ 144 fps amb el preset *Alta* en una GPU mitjana.
 
 **Fet (5/11/2026).**
-- Les captures de Godot i de la web des dels mateixos 6 angles, de tarda i de nit, es fan amb `tools/shot_views.sh` i `tools/shot_web.mjs` (`tools/views.json`). L'estadi és el de la web, amb llum real, ombres, públic en 3D i banquetes.
-- Amb *Baixa* a 1080p fa 183–230 fps a l'Intel Arc 130V integrada.
-- Amb *Alta* a 1440p fa 72–97 fps a la mateixa integrada. Una GPU mitjana n'hauria de fer 180–290; queda per confirmar a la fase 7.
+- Les captures de Godot i de la web des dels mateixos angles, de tarda i de nit, es fan amb `tools/shot_views.sh` i `tools/shot_web.mjs` (`tools/views.json`).
+- Primer es va fer l'estadi de la web, amb llum real, ombres i públic en 3D. Després, a petició de l'usuari i a partir d'una foto aèria, s'ha substituït pel camp real de l'Iluro: sense grada, passeig amb banquetes, tanques, bardissa i talús, i casetes del club (`docs/decisions/0006`).
+- Amb *Baixa* a 1080p fa 175–236 fps a l'Intel Arc 130V integrada.
+- Amb *Alta* a 1440p fa 76–100 fps a la mateixa integrada. Una GPU mitjana n'hauria de fer unes 2,5–3 vegades més; queda per confirmar a la fase 7.
 - No hi ha LightmapGI ni ReflectionProbe: l'estadi es genera per codi i LightmapGI s'ha de coure a mà a l'editor. En lloc d'això, hi ha SSAO a *Alta* i SSIL a *Ultra*.
-- Decisions: `docs/decisions/0005`.
+- Decisions: `docs/decisions/0005` i `0006`.
 
 ### Fase 4: jugadors riggejats i animacions (2–3 setmanes) — és la fase de més risc
 

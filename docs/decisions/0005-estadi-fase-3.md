@@ -1,6 +1,8 @@
 # 0005 · Estadi, il·luminació i presets de qualitat (fase 3)
 
-**Data:** 5 de novembre de 2026 · **Estat:** acceptada
+**Data:** 5 de novembre de 2026 · **Estat:** acceptada; la disposició de l'estadi l'ha substituïda la decisió 0006
+
+> **Nota (5/11/2026).** Ara el camp és com el real de l'Iluro (decisió 0006): no hi ha grada, les tanques LED són pancartes fixes i les torres i la casa del club són unes altres. Continuen vigents les textures generades, els shaders, la llum, l'ombra dels focus només per als jugadors, els presets i la manera de comprovar-ho. Els punts 3, 4 (`led_scroll`) i 7 (banquetes) queden substituïts.
 
 ## Context
 

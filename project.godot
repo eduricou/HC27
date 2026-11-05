@@ -49,10 +49,6 @@ crowd_jump={
 "type": "float",
 "value": 0.0
 }
-led_scroll={
-"type": "float",
-"value": 0.0
-}
 
 [rendering]
 

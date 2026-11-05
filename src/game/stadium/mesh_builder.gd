@@ -109,22 +109,19 @@ func box(
 
 
 ## Dos quads verticals creuats, centrats a (x, y), d'amplada w i de h0 a h1 (arbres).
-func cross_quad(x: float, y: float, w: float, h0: float, h1: float) -> void:
-	var hw := w * 0.5
-	quad(
-		Vector3(x - hw, y, h0),
-		Vector3(x + hw, y, h0),
-		Vector3(x + hw, y, h1),
-		Vector3(x - hw, y, h1),
-		Vector3(0, 1, 0)
-	)
-	quad(
-		Vector3(x, y - hw, h0),
-		Vector3(x, y + hw, h0),
-		Vector3(x, y + hw, h1),
-		Vector3(x, y - hw, h1),
-		Vector3(1, 0, 0)
-	)
+## `angle`: gir al voltant de la vertical (0: un quad paral·lel a x i l'altre a y).
+func cross_quad(x: float, y: float, w: float, h0: float, h1: float, angle: float = 0.0) -> void:
+	for k in 2:
+		var a := angle + k * PI * 0.5
+		var d := Vector2(cos(a), sin(a)) * (w * 0.5)
+		var n := Vector3(-d.y, d.x, 0.0)
+		quad(
+			Vector3(x - d.x, y - d.y, h0),
+			Vector3(x + d.x, y + d.y, h0),
+			Vector3(x + d.x, y + d.y, h1),
+			Vector3(x - d.x, y - d.y, h1),
+			n
+		)
 
 
 ## Polígon convex (en ventall des del primer punt), amb UV planes a partir de x i z o y.

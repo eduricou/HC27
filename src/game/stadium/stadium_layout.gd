@@ -1,66 +1,95 @@
-## On va cada cosa de l'estadi, en coordenades de la simulació (metres). Les mesures i
-## l'atzar de la ciutat i dels pins són els de glInit() a la web (línies 1502–1539), amb
-## el mateix generador (Park–Miller amb llavor 11), perquè el fons sigui el mateix.
+## On va cada cosa del camp, en coordenades de la simulació (metres). És el camp real de
+## l'Iluro al carrer Galícia de Mataró (foto aèria; docs/decisions/0006), no l'estadi de
+## la web: no hi ha grada, només tanques als laterals.
+##   −y (oest, al fons de la vista TV): passeig amb les banquetes, tanca, arbres i el carrer
+##       Galícia amb cotxes i cases.
+##   +y (est, on és la càmera TV): tanca, bardissa i talús amb la carretera a dalt.
+##   +x (nord): les casetes del club. −x (sud): la xarxa alta i un camp de matolls.
+## La ciutat del fons (hospital i blocs) és la de glInit() a la web, amb el mateix
+## generador (Park–Miller amb llavor 11).
 class_name StadiumLayout
 extends RefCounted
 
 const HL := Constants.HL
 const HW := Constants.HW
 
-## Torres de llum: [x, y] i altura dels focus. ref: TOWERS, TOWER_H
-const TOWERS: Array[Vector2] = [
-	Vector2(-HL - 6.0, -HW - 12.0),
-	Vector2(HL + 6.0, -HW - 12.0),
-	Vector2(-HL - 6.0, HW + 14.0),
-	Vector2(HL + 6.0, HW + 14.0),
-]
-const TOWER_H := 25.0
-## Direcció cap al sol de tarda (x, y, z de la simulació). ref: SUN
+## Direcció cap al sol de tarda (x, y, z de la simulació): sud-oest, darrere del passeig.
+## ref: SUN
 const SUN := Vector3(-0.8, -0.25, 0.5)
 
-## Grada: de x0 a x1, davant (yf) i darrere (yb); 8 files de seients.
-const STAND_X0 := -32.0
-const STAND_X1 := 32.0
-const STAND_YF := -HW - 9.0
-const STAND_YB := -HW - 21.0
-const STAND_ROWS := 8
-const STAND_Z0 := 1.3
-const STAND_Z1 := 9.3
-const STAND_BACK_H := 12.8
-const ROOF_FRONT := Vector2(STAND_YF + 0.8, 12.2)
-const ROOF_BACK := Vector2(STAND_YB - 0.6, 13.6)
-const STAND_COLUMNS: Array[float] = [-31.0, -15.5, 0.0, 15.5, 31.0]
-
-## Tanques LED: la llarga davant de la grada i les dels fons, a banda i banda de la porteria.
-const LED_Y := -HW - 4.3
-const LED_X := 45.0
-const LED_END_X := HL + 4.6
-const LED_END_SPANS: Array[Vector2] = [Vector2(-24.0, -7.0), Vector2(7.0, 24.0)]
-
-## Xarxa alta darrere de cada porteria.
-const BACKNET_X := HL + 6.5
-const BACKNET_Y := 16.0
-const BACKNET_H := 6.0
-
-## Límit del voral (on acaba el formigó). ref: apr a FS_GROUND
+## Fins on arriba el formigó al voltant de la gespa: als extrems, el passeig de l'oest
+## (fins a la tanca) i la franja de l'est (fins a la bardissa).
 const APRON_X := HL + 8.0
-const APRON_Y0 := -HW - 9.0
-const APRON_Y1 := HW + 8.5
+const WALK_Y := -HW - 10.0
+const EAST_Y := HW + 5.8
+## Tanca del passeig (oest) i de l'est, i alçada.
+const FENCE_H := 2.0
+const EAST_FENCE_H := 1.3
+## Bardissa de l'est: davant, fondària i alçada.
+const HEDGE_Y := HW + 6.0
+const HEDGE_D := 1.6
+const HEDGE_H := 3.0
+## Talús de l'est i carretera de dalt (a ROAD_Z m d'alçada).
+const SLOPE_Y0 := HW + 7.6
+const ROAD_Y0 := HW + 20.0
+const ROAD_Y1 := HW + 28.0
+const ROAD_Z := 7.0
+const SLOPE_TOP := Vector2(HW + 60.0, 13.0)
+## Carrer Galícia: franja amb arbres, vorera, calçada i vorera de l'altra banda.
+const TREE_Y := -HW - 11.3
+const SIDEWALK_Y := -HW - 12.5
+const STREET_Y0 := -HW - 15.0
+const STREET_Y1 := -HW - 24.0
+const HOUSES_Y := -HW - 27.0
+## Rotonda al nord-oest.
+const ROUNDABOUT := Vector3(HL + 16.0, -HW - 19.5, 9.0)
 
-## Casa del club: [x0, x1, y0, y1] i altura.
-const CLUBHOUSE := Rect2(-HL - 26.0, -HW - 12.0, 15.0, 15.0)
-const CLUBHOUSE_H := 6.5
+## Xarxa alta de darrere la porteria del sud i la més baixa del nord.
+const SOUTH_NET := {"x": -HL - 7.0, "y0": -HW - 8.0, "y1": HW + 4.0, "h": 7.0}
+const NORTH_NET := {"x": HL + 7.0, "y0": -16.0, "y1": 16.0, "h": 5.0}
+
+## Torres de llum: quatre al passeig (entre les banquetes i les pancartes) i dues a les
+## cantonades de l'est. Al costat de la càmera TV no n'hi pot haver entre x = ±41:
+## quedarien entre la càmera i el camp.
+const POLES: Array[Vector2] = [
+	Vector2(-38.25, WALK_Y + 0.7),
+	Vector2(-12.0, WALK_Y + 0.7),
+	Vector2(12.0, WALK_Y + 0.7),
+	Vector2(38.25, WALK_Y + 0.7),
+	Vector2(-44.0, HEDGE_Y - 0.5),
+	Vector2(44.0, HEDGE_Y - 0.5),
+]
+## Posició de la càmera TV (CameraRig.tv_target(): 26 m enfora de la banda i 13 m amunt) i
+## fins on pot anar en x.
+const TV_CAM := Vector2(HW + 26.0, 13.0)
+const TV_CAM_X := HL - 11.0
+const POLE_H := 18.0
+
+## Banquetes al passeig, a banda i banda de la línia del mig (Iluro a l'esquerra): centre
+## x, amplada, davant (cap al camp) i darrere.
+const BENCH_X: Array[float] = [-4.6, 4.6]
+const BENCH_W := 6.0
+const BENCH_Y0 := -HW - 5.0
+const BENCH_Y1 := -HW - 6.8
+const BENCH_H := 2.1
+
+## Casetes del club al nord: [Rect2(x0, y0, mida x, mida y), alçada, paret, teulada].
+## La paret "club" fa servir la façana amb el rètol ILURO HC.
+const HUTS := [
+	[Rect2(HL + 10.0, -HW - 8.0, 6.0, 7.0), 3.0, "c9c6bd", "6b7076"],
+	[Rect2(HL + 11.0, -HW + 0.5, 4.0, 5.0), 3.2, "f2f1ec", "e4e4df"],
+	[Rect2(HL + 9.5, -HW + 7.0, 6.0, 12.0), 3.4, "club", "8d97a3"],
+	[Rect2(HL + 10.0, -HW + 20.5, 5.0, 5.0), 3.0, "d9d4c7", "9c3a2c"],
+]
+## Zona pavimentada de les casetes.
+const HUTS_AREA := Rect2(HL + 8.0, -HW - 10.0, 18.0, 37.0)
+
 ## Hospital del fons.
 const HOSPITAL := Rect2(30.0, -175.0, 75.0, 25.0)
 const HOSPITAL_H := 26.0
 
-## Banquetes, al costat de la càmera TV: centre x de cada una (Iluro a l'esquerra, Polo a
-## la dreta), davant (y0, cap al camp) i darrere (y1).
-const BENCH_X: Array[float] = [-8.0, 8.0]
-const BENCH_W := 7.0
-const BENCH_Y0 := HW + 4.9
-const BENCH_Y1 := HW + 6.7
-const BENCH_H := 2.2
+## Persones dretes al passeig.
+const SPECTATORS := 34
 
 
 ## Generador de la web: seed = seed·16807 mod (2³¹ − 1). ref: rnd() de glInit()
@@ -72,8 +101,7 @@ class ParkMiller:
 		return seed / 2147483647.0
 
 
-## Blocs de pisos: Rect2(x0, y0, w, d) i altura (z de la Rect2 no existeix: es retorna a
-## part). Retorna [[Rect2, h], ...] i deixa el generador a punt per als pins.
+## Blocs de pisos del fons: [[Rect2(x0, y0, w, d), h], ...]. ref: línies 1521–1523
 static func city_blocks(rnd: ParkMiller) -> Array:
 	var out := []
 	for i in 26:
@@ -88,44 +116,60 @@ static func city_blocks(rnd: ParkMiller) -> Array:
 	return out
 
 
-## Pins pinyers: [Vector3(x, y, escala), ...], ordenats de lluny a prop com a la web.
-static func pines(rnd: ParkMiller) -> Array[Vector3]:
-	var pts: Array[Vector2] = []
-	for i in 70:
-		var x: float
-		var y: float
-		var zone := rnd.next()
-		if zone < 0.3:
-			var s := -1.0 if rnd.next() < 0.5 else 1.0
-			x = s * (HL + 12.0 + rnd.next() * 22.0)
-			y = -40.0 + rnd.next() * 70.0
-		elif zone < 0.75:
-			x = -75.0 + rnd.next() * 150.0
-			y = -52.0 - rnd.next() * 30.0
-		else:
-			var s := -1.0 if rnd.next() < 0.5 else 1.0
-			x = s * (36.0 + rnd.next() * 14.0)
-			y = -38.0 - rnd.next() * 16.0
-		if x < -HL - 8.0 and x > -HL - 29.0 and y > -HW - 15.0 and y < -HW + 6.0:
-			continue
-		if absf(x) < 34.0 and y > -HW - 22.0:
-			continue
-		pts.append(Vector2(x, y))
-	pts.sort_custom(func(a: Vector2, b: Vector2) -> bool: return a.y < b.y)
-	var out: Array[Vector3] = []
-	for p in pts:
-		out.append(Vector3(p.x, p.y, 0.8 + rnd.next() * 0.5))
+## Altura del terreny a l'est (talús i carretera) a la coordenada y.
+static func ground_z(y: float) -> float:
+	if y <= SLOPE_Y0:
+		return 0.0
+	if y <= ROAD_Y0:
+		return ROAD_Z * (y - SLOPE_Y0) / (ROAD_Y0 - SLOPE_Y0)
+	if y <= ROAD_Y1:
+		return ROAD_Z
+	return lerpf(ROAD_Z, SLOPE_TOP.y, clampf((y - ROAD_Y1) / (SLOPE_TOP.x - ROAD_Y1), 0.0, 1.0))
+
+
+## Vegetació: pins i arbustos, [Vector4(x, y, z de la base, escala)]. Al talús de davant de
+## la càmera TV només hi ha arbustos baixos (si no, taparien el camp).
+static func vegetation(seed_value: int = 27) -> Dictionary:
+	var rng := RandomNumberGenerator.new()
+	rng.seed = seed_value
+	var pines: Array[Vector4] = []
+	var bushes: Array[Vector4] = []
+	# Talús de l'est: arbustos entre la bardissa i la carretera; pins més amunt.
+	for i in 46:
+		var y := rng.randf_range(SLOPE_Y0 + 1.5, ROAD_Y0 - 1.0)
+		var x := rng.randf_range(-120.0, 120.0)
+		bushes.append(Vector4(x, y, ground_z(y), rng.randf_range(0.5, 0.9)))
+	for i in 34:
+		var y := rng.randf_range(ROAD_Y1 + 3.0, SLOPE_TOP.x)
+		var x := rng.randf_range(-130.0, 130.0)
+		pines.append(Vector4(x, y, ground_z(y), rng.randf_range(0.8, 1.25)))
+	# Camp de matolls del sud.
+	for i in 14:
+		var x := rng.randf_range(-HL - 70.0, -HL - 14.0)
+		var y := rng.randf_range(-60.0, HW + 6.0)
+		pines.append(Vector4(x, y, 0.0, rng.randf_range(0.8, 1.3)))
+	for i in 24:
+		var x := rng.randf_range(-HL - 70.0, -HL - 10.0)
+		var y := rng.randf_range(-60.0, HW + 6.0)
+		bushes.append(Vector4(x, y, 0.0, rng.randf_range(0.6, 1.1)))
+	# Darrere les casetes del club, al nord.
+	for i in 10:
+		var x := rng.randf_range(HL + 28.0, HL + 70.0)
+		var y := rng.randf_range(-50.0, HW + 6.0)
+		pines.append(Vector4(x, y, 0.0, rng.randf_range(0.8, 1.2)))
+	# Els pins de lluny primer (com a la web), perquè els transparents s'ordenin millor.
+	pines.sort_custom(func(a: Vector4, b: Vector4) -> bool: return a.y < b.y)
+	return {"pines": pines, "bushes": bushes}
+
+
+## Arbres del carrer Galícia, a la franja de darrere la tanca del passeig.
+static func street_trees() -> Array[Vector2]:
+	var out: Array[Vector2] = []
+	var x := -HL - 4.0
+	while x <= HL + 4.0:
+		out.append(Vector2(x, TREE_Y))
+		x += 8.5
 	return out
-
-
-## Altura del graó de la fila `r` (0 = la de davant).
-static func row_z(r: int) -> float:
-	return STAND_Z0 + r * (STAND_Z1 - STAND_Z0) / (STAND_ROWS - 1)
-
-
-## y del davant del graó de la fila `r`.
-static func row_y(r: int) -> float:
-	return STAND_YF - r * (STAND_YF - STAND_YB) / STAND_ROWS
 
 
 ## Direcció cap al sol en coordenades de Godot (normalitzada).

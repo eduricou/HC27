@@ -1,28 +1,29 @@
-# Genera les textures de l'estadi a assets/textures/stadium/ (PNG). És el port de les
-# funcions que a la web les dibuixen amb canvas en arrencar: makeNoise(), makeCrowd(),
-# makeLED(), makeFascia(), makeWall(), makeClubhouse(), makeFacade(), makePine() i
-# makeLamp() (línies 1387–1467 de la referència). Aquí es fan una sola vegada i es
-# desen, perquè Godot les importi amb mipmaps.
+# Genera les textures del camp a assets/textures/stadium/ (PNG). Parteix de les funcions
+# que a la web les dibuixen amb canvas en arrencar: makeNoise(), makeLED(),
+# makeClubhouse(), makeFacade(), makePine() i makeLamp() (línies 1387–1467 de la
+# referència). Aquí es fan una sola vegada i es desen, perquè Godot les importi amb
+# mipmaps.
 #
 # Ús: bash tools/bake_textures.sh   (obre una finestra un moment: dibuixar text necessita
 # la GPU, i en mode headless no es pot)
 #
-# Diferències amb la web, buscades:
-# - La grada és en 3D: el públic és un atles de persones (crowd.png) per a un MultiMesh,
-#   no una textura amb els seients pintats.
-# - Les tanques LED tenen els píxels quadrats (a la web el text queda estirat) i la
-#   quadrícula de LED la fa el shader.
+# Diferències amb la web, buscades (el camp és com el real, docs/decisions/0006):
+# - No hi ha grada: el públic és un atles de persones dretes (people.png) per a un
+#   MultiMesh al passeig. Tampoc hi ha el frontal ni el mur de la grada.
+# - Els anuncis (led.png) són pancartes de la tanca, amb els píxels quadrats (a la web el
+#   text queda estirat).
+# - Arbres del carrer (tree.png) i copa dels pins vista des de dalt (pine_top.png).
 # - La resta té el doble de resolució que a la web, amb el mateix dibuix.
 extends SceneTree
 
 const OUT := "res://assets/textures/stadium"
 const FONT_FILE := "C:/Windows/Fonts/bahnschrift.ttf"
 
-## Mida d'una persona de l'atles i nombre de columnes i files.
-const CELL := Vector2i(64, 96)
-const ATLAS := Vector2i(8, 8)
+## Mida d'una persona de l'atles (0,6 x 1,8 m) i nombre de columnes i files.
+const CELL := Vector2i(64, 192)
+const ATLAS := Vector2i(8, 2)
 ## Les últimes cel·les de l'atles són afició del Polo.
-const AWAY_CELLS := 16
+const AWAY_CELLS := 5
 
 const LED_ADS := [
 	["ILURO HC", "#f07c1a", "#ffffff"],
@@ -39,6 +40,8 @@ const AWAY_SHIRTS := ["#f6f6f3", "#14234b", "#14234b", "#c8102e"]
 const NEUTRAL_SHIRTS := [
 	"#3a5a8c", "#8a2a2a", "#2f6b3a", "#d9c27a", "#454545", "#b8b8b8", "#7b4f9a", "#2a7f86"
 ]
+const JACKETS := ["#2b2f36", "#5a3d2b", "#3c4a5e", "#6e1f22", "#4a5040"]
+const TROUSERS := ["#3b4f6e", "#2a2a2e", "#b8a888", "#6d6f73", "#33465f"]
 
 var _font: Font
 var _rng := RandomNumberGenerator.new()
@@ -61,15 +64,14 @@ func _run() -> void:
 	_font = _make_font()
 	_rng.seed = 2027
 	_save(_noise(), "noise")
-	await _bake("crowd", Vector2i(CELL.x * ATLAS.x, CELL.y * ATLAS.y), _draw_crowd, true)
+	await _bake("people", Vector2i(CELL.x * ATLAS.x, CELL.y * ATLAS.y), _draw_people, true)
 	await _bake("led", Vector2i(4096, 64), _draw_led)
-	await _bake("fascia", Vector2i(2048, 64), _draw_fascia)
-	await _bake("wall", Vector2i(256, 64), _draw_wall)
 	await _bake("clubhouse", Vector2i(1024, 256), _draw_clubhouse)
 	await _bake("facade_hospital", Vector2i(256, 256), _draw_facade.bind(Color("e9e7e0"), true))
 	await _bake("facade_flats", Vector2i(256, 256), _draw_facade.bind(Color("c8b699"), false))
 	await _bake("pine", Vector2i(256, 256), _draw_pine, true)
 	await _bake("pine_top", Vector2i(128, 128), _draw_pine_top, true)
+	await _bake("tree", Vector2i(256, 256), _draw_tree, true)
 	await _bake("lamp", Vector2i(128, 64), _draw_lamp)
 	print("Textures desades a %s" % OUT)
 	quit(0)
@@ -179,9 +181,9 @@ static func _sample(a: PackedFloat32Array, g: int, u: float, v: float) -> float:
 # --- Públic -------------------------------------------------------------------------
 
 
-## Atles de persones assegudes, vistes de cara. Cada cel·la és una persona diferent;
-## les últimes AWAY_CELLS són del Polo. ref: makeCrowd()
-func _draw_crowd(c: CanvasItem) -> void:
+## Atles de persones dretes, vistes de cara (el públic del passeig). Cada cel·la és una
+## persona diferent; les últimes AWAY_CELLS són del Polo. Inspirat en makeCrowd().
+func _draw_people(c: CanvasItem) -> void:
 	var count := ATLAS.x * ATLAS.y
 	for k in count:
 		var origin := Vector2((k % ATLAS.x) * CELL.x, (k / ATLAS.x) * CELL.y)
@@ -189,56 +191,75 @@ func _draw_crowd(c: CanvasItem) -> void:
 		var shirt: String
 		if away:
 			shirt = AWAY_SHIRTS[_rng.randi() % AWAY_SHIRTS.size()]
-		elif _rng.randf() < 0.55:
+		elif _rng.randf() < 0.5:
 			shirt = HOME_SHIRTS[_rng.randi() % HOME_SHIRTS.size()]
 		else:
 			shirt = NEUTRAL_SHIRTS[_rng.randi() % NEUTRAL_SHIRTS.size()]
-		var skin := Color(Constants.SKINS[_rng.randi() % Constants.SKINS.size()])
-		var hair := Color(Constants.HAIRS[_rng.randi() % Constants.HAIRS.size()])
-		var arms := _rng.randf() < 0.14
-		var scarf := not away and _rng.randf() < 0.18
-		_person(c, origin, Color(shirt), skin, hair, arms, scarf)
+		var jacket: Variant = null
+		if _rng.randf() < 0.35:
+			jacket = Color(JACKETS[_rng.randi() % JACKETS.size()])
+		var p := {
+			"shirt": Color(shirt),
+			"skin": Color(Constants.SKINS[_rng.randi() % Constants.SKINS.size()]),
+			"hair": Color(Constants.HAIRS[_rng.randi() % Constants.HAIRS.size()]),
+			"trousers": Color(TROUSERS[_rng.randi() % TROUSERS.size()]),
+			"jacket": jacket,
+			"scarf": not away and _rng.randf() < 0.25,
+			"pockets": _rng.randf() < 0.4,
+		}
+		_person(c, origin, p)
 
 
-func _person(
-	c: CanvasItem, o: Vector2, shirt: Color, skin: Color, hair: Color, arms: bool, scarf: bool
-) -> void:
+func _person(c: CanvasItem, o: Vector2, p: Dictionary) -> void:
 	var cx := o.x + 32.0
-	var w := 44.0
-	if arms:
-		# Braços enlaire.
-		c.draw_rect(Rect2(cx - w * 0.5, o.y + 8.0, 8.0, 46.0), skin)
-		c.draw_rect(Rect2(cx + w * 0.5 - 8.0, o.y + 8.0, 8.0, 46.0), skin)
-		c.draw_rect(Rect2(cx - w * 0.5 - 1.0, o.y + 40.0, 10.0, 16.0), shirt)
-		c.draw_rect(Rect2(cx + w * 0.5 - 9.0, o.y + 40.0, 10.0, 16.0), shirt)
-	# Tors: rectangle amb les espatlles arrodonides.
-	var top := o.y + 50.0
+	var skin: Color = p["skin"]
+	var shirt: Color = p["shirt"]
+	var outer: Color = p["jacket"] if p["jacket"] != null else shirt
+	# Cames i sabates.
+	var legs: Color = p["trousers"]
+	c.draw_rect(Rect2(cx - 17.0, o.y + 98.0, 16.0, 80.0), legs)
+	c.draw_rect(Rect2(cx + 1.0, o.y + 98.0, 16.0, 80.0), legs)
+	c.draw_rect(Rect2(cx - 19.0, o.y + 176.0, 18.0, 9.0), Color("1e1d1c"))
+	c.draw_rect(Rect2(cx + 1.0, o.y + 176.0, 18.0, 9.0), Color("1e1d1c"))
+	# Braços (amb les mans a les butxaques o no).
+	var arm_end := 84.0 if p["pockets"] else 96.0
+	c.draw_rect(Rect2(cx - 26.0, o.y + 40.0, 8.0, arm_end - 40.0), outer)
+	c.draw_rect(Rect2(cx + 18.0, o.y + 40.0, 8.0, arm_end - 40.0), outer)
+	if not p["pockets"]:
+		c.draw_circle(Vector2(cx - 22.0, o.y + 99.0), 4.5, skin, true, -1.0, true)
+		c.draw_circle(Vector2(cx + 22.0, o.y + 99.0), 4.5, skin, true, -1.0, true)
+	# Tors amb les espatlles arrodonides.
+	var top := o.y + 35.0
+	var w := 38.0
 	var body := PackedVector2Array()
-	body.append(Vector2(cx - w * 0.5, o.y + CELL.y))
+	body.append(Vector2(cx - w * 0.5, o.y + 102.0))
 	for i in range(0, 9):
 		var a := PI + i * (PI * 0.5) / 8.0
-		body.append(Vector2(cx - w * 0.5 + 12.0 + cos(a) * 12.0, top + 12.0 + sin(a) * 12.0))
+		body.append(Vector2(cx - w * 0.5 + 9.0 + cos(a) * 9.0, top + 9.0 + sin(a) * 9.0))
 	for i in range(0, 9):
 		var a := PI * 1.5 + i * (PI * 0.5) / 8.0
-		body.append(Vector2(cx + w * 0.5 - 12.0 + cos(a) * 12.0, top + 12.0 + sin(a) * 12.0))
-	body.append(Vector2(cx + w * 0.5, o.y + CELL.y))
-	c.draw_colored_polygon(body, shirt)
+		body.append(Vector2(cx + w * 0.5 - 9.0 + cos(a) * 9.0, top + 9.0 + sin(a) * 9.0))
+	body.append(Vector2(cx + w * 0.5, o.y + 102.0))
+	c.draw_colored_polygon(body, outer)
+	if p["jacket"] != null:
+		# Jaqueta oberta: es veu la samarreta al mig.
+		c.draw_rect(Rect2(cx - 5.0, top + 2.0, 10.0, 65.0), shirt)
 	# Ombra del costat dret.
-	c.draw_rect(Rect2(cx + w * 0.5 - 14.0, top + 4.0, 14.0, CELL.y - 54.0), Color(0, 0, 0, 0.18))
-	# Coll.
-	c.draw_rect(Rect2(cx - 5.0, top - 6.0, 10.0, 8.0), skin.darkened(0.12))
-	if scarf:
-		c.draw_rect(Rect2(cx - w * 0.5 - 2.0, top + 2.0, w + 4.0, 8.0), Color("f07c1a"))
-		c.draw_rect(Rect2(cx - 8.0, top + 2.0, 10.0, 8.0), Color.WHITE)
-		c.draw_rect(Rect2(cx + 6.0, top + 10.0, 8.0, 20.0), Color("f07c1a"))
+	c.draw_rect(Rect2(cx + w * 0.5 - 11.0, top + 4.0, 11.0, 63.0), Color(0, 0, 0, 0.16))
+	c.draw_rect(Rect2(cx + 1.0, o.y + 98.0, 16.0, 80.0), Color(0, 0, 0, 0.12))
+	c.draw_rect(Rect2(cx - 4.0, top - 5.0, 8.0, 7.0), skin.darkened(0.12))
+	if p["scarf"]:
+		c.draw_rect(Rect2(cx - 15.0, top - 1.0, 30.0, 7.0), Color("f07c1a"))
+		c.draw_rect(Rect2(cx - 4.0, top - 1.0, 8.0, 7.0), Color.WHITE)
+		c.draw_rect(Rect2(cx + 4.0, top + 6.0, 7.0, 24.0), Color("f07c1a"))
 	# Cap i cabell.
-	var head := Vector2(cx, top - 16.0)
-	c.draw_circle(head, 13.0, skin, true, -1.0, true)
+	var head := Vector2(cx, o.y + 22.0)
+	c.draw_circle(head, 11.0, skin, true, -1.0, true)
 	var hair_pts := PackedVector2Array()
 	for i in range(0, 17):
 		var a := PI * 1.02 + i * (PI * 0.96) / 16.0
-		hair_pts.append(head + Vector2(cos(a), sin(a)) * 13.6 + Vector2(0.0, -2.0))
-	c.draw_colored_polygon(hair_pts, hair)
+		hair_pts.append(head + Vector2(cos(a), sin(a)) * 11.6 + Vector2(0.0, -1.5))
+	c.draw_colored_polygon(hair_pts, p["hair"])
 
 
 # --- Rètols i façanes ---------------------------------------------------------------
@@ -261,23 +282,6 @@ func _draw_led(c: CanvasItem) -> void:
 		var ad: Array = LED_ADS[i]
 		c.draw_rect(Rect2(i * 512, 0, 512, 64), Color(ad[1]))
 		_text(c, ad[0], Vector2(i * 512 + 256, 33), 50, Color(ad[2]), 470.0)
-
-
-## ref: makeFascia()
-func _draw_fascia(c: CanvasItem) -> void:
-	c.draw_rect(Rect2(0, 0, 2048, 64), Color("16201c"))
-	c.draw_rect(Rect2(0, 52, 2048, 12), Color("f07c1a"))
-	_text(c, "CAMP MUNICIPAL D'HOQUEI · MATARÓ", Vector2(1024, 26), 40, Color("eef2ec"))
-
-
-## Mur de davant de la grada. ref: makeWall()
-func _draw_wall(c: CanvasItem) -> void:
-	for y in 64:
-		var k := y / 63.0
-		c.draw_rect(Rect2(0, y, 256, 1), Color("a3a69f").lerp(Color("83867f"), k))
-	c.draw_rect(Rect2(0, 8, 256, 7), Color("f07c1a"))
-	for x in range(0, 256, 64):
-		c.draw_rect(Rect2(x, 0, 2, 64), Color(0, 0, 0, 0.15))
 
 
 ## Façana de la casa del club (el doble de la web). ref: makeClubhouse()
@@ -376,6 +380,40 @@ func _draw_pine_top(c: CanvasItem) -> void:
 			if layer[3] == Color("2c4a24") and _rng.randf() < 0.5:
 				col = Color("33552a")
 			_ellipse(c, center + Vector2(cos(a), sin(a)) * d, Vector2(r, r * 0.85), col)
+
+
+## Arbre del carrer (no hi és a la web): tronc i copa rodona.
+func _draw_tree(c: CanvasItem) -> void:
+	var trunk := Color("5b4636")
+	c.draw_polyline(
+		_quad_curve(Vector2(128, 256), Vector2(122, 200), Vector2(127, 140)), trunk, 13.0, true
+	)
+	c.draw_polyline(
+		_quad_curve(Vector2(126, 168), Vector2(104, 150), Vector2(92, 128)), trunk, 6.0, true
+	)
+	c.draw_polyline(
+		_quad_curve(Vector2(127, 160), Vector2(150, 144), Vector2(162, 124)), trunk, 6.0, true
+	)
+	var center := Vector2(128, 96)
+	# [taques, radi, mida de la copa, color, desplaçament]
+	var layers := [
+		[46, 30.0, Vector2(84, 66), Color("24401f"), Vector2(0, 8)],
+		[52, 24.0, Vector2(78, 60), Color("355a2c"), Vector2(-2, 0)],
+		[26, 15.0, Vector2(60, 46), Color("4e7a3c"), Vector2(-14, -12)],
+	]
+	for li in layers.size():
+		var layer: Array = layers[li]
+		var spread: Vector2 = layer[2]
+		var off: Vector2 = layer[4]
+		for i in int(layer[0]):
+			var a := _rng.randf() * TAU
+			var d := sqrt(_rng.randf())
+			var r: float = float(layer[1]) * (0.7 + _rng.randf() * 0.5)
+			var col: Color = layer[3]
+			if li == 1 and _rng.randf() < 0.4:
+				col = Color("3e6632")
+			var pos := center + off + Vector2(cos(a) * spread.x, sin(a) * spread.y) * d
+			_ellipse(c, pos, Vector2(r, r * 0.8), col)
 
 
 ## Capçal del focus amb 2x4 llums. ref: makeLamp()

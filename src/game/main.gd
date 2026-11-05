@@ -217,7 +217,7 @@ func _quick_match(side: int, seconds: float) -> void:
 
 func _process(delta: float) -> void:
 	if runner.sim:
-		stadium.update_frame(runner.sim.s.time)
+		stadium.update_frame()
 	if scenario == "views":
 		_views_step()
 	elif scenario.begins_with("smoke"):

@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://bt06jvdq25u74"
-path="res://.godot/imported/fascia.png-bde6567b4041e2be212e1993f7f7f58f.ctex"
+uid="uid://ch1u862gsk82x"
+path="res://.godot/imported/people.png-22805698195b07dd9903a6b68e5ea830.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://assets/textures/stadium/fascia.png"
-dest_files=["res://.godot/imported/fascia.png-bde6567b4041e2be212e1993f7f7f58f.ctex"]
+source_file="res://assets/textures/stadium/people.png"
+dest_files=["res://.godot/imported/people.png-22805698195b07dd9903a6b68e5ea830.ctex"]
 
 [params]
 

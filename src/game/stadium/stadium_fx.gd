@@ -1,8 +1,8 @@
-## Efectes de l'estadi que depenen del partit però no de les regles: la xarxa que es
-## mou després d'un gol, el públic que salta i el desplaçament de les tanques LED.
+## Efectes del camp que depenen del partit però no de les regles: la xarxa que es mou
+## després d'un gol i el públic que salta.
 ## A la web viuen a G (G.net, G.crowdJump) i avancen dins d'update(); aquí avancen amb
 ## els passos de la simulació (MatchRunner.stepped), i per tant s'aturen amb la pausa.
-## ref: línies 406, 525, 952–953, 989, 997, 1007 i 1566
+## ref: línies 406, 525, 952–953, 989, 997 i 1007
 class_name StadiumFx
 extends RefCounted
 
@@ -52,14 +52,3 @@ func _net(side: int, y: float) -> void:
 	net_side = side
 	net_y = clampf(y, -Constants.GHW, Constants.GHW)
 	net_t = 0.0
-
-
-## Desplaçament de la textura de les tanques LED al temps `t` del partit: cada 5 s
-## passen a l'anunci següent (1/8 de textura) en 0,6 s. ref: uScroll a glRender()
-static func led_scroll(t: float) -> float:
-	var ct := fmod(t, 5.0)
-	var k := 1.0
-	if ct < 0.6:
-		var x := ct / 0.6
-		k = x * x * (3.0 - 2.0 * x)
-	return (floorf(t / 5.0) + k) * 0.125

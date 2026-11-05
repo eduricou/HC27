@@ -66,14 +66,16 @@ Regles, constants i toleràncies: docs/regles.md. Decisions: docs/decisions/.
 - Coords.to_view() és una reflexió: les malles generades s'han de fer amb MeshBuilder
   (src/game/stadium/mesh_builder.gd), que orienta cada triangle segons la normal, o amb
   `cull_mode = CULL_DISABLED`; si no, les cares no es veuen.
-- L'estadi (scenes/stadium.tscn, src/game/stadium/) es construeix per codi amb les mesures
-  de StadiumLayout (les de glInit() a la web). Porta també la llum (tarda: sol; nit: 4
-  focus), el cel i l'entorn. Shader globals a project.godot: night, crowd_jump, led_scroll.
-  L'estadi fix va a la capa 2 i els focus de nit no en fan ombra (shadow_caster_mask).
-  Efectes del partit (xarxa, públic): StadiumFx, que llegeix els esdeveniments de cada pas.
+- El camp (scenes/stadium.tscn, src/game/stadium/) és el real de l'Iluro al carrer Galícia
+  (foto aèria; docs/decisions/0006), no l'estadi de la web: sense grada, passeig amb
+  banquetes i públic dret a −y, bardissa i talús a +y (on és la càmera TV), casetes del club
+  a +x. Tota la disposició és a StadiumLayout. Res de l'est no pot tapar la vista TV (hi ha
+  una prova). Porta també la llum (tarda: sol; nit: 6 focus), el cel i l'entorn. Shader
+  globals a project.godot: night, crowd_jump. El camp fix va a la capa 2 i els focus de nit
+  no en fan ombra (shadow_caster_mask). Efectes del partit (xarxa, públic): StadiumFx.
 - Presets de qualitat: src/game/quality.gd (`--quality=baixa|mitjana|alta|ultra`, per defecte
   alta). Arguments del joc: `--time=tarda|nit` (per defecte nit, com la web). Decisions de la
-  fase 3: docs/decisions/0005.
+  fase 3: docs/decisions/0005 i 0006.
 - Unitats en metres i segons. Simulació: x = llargada (91,4), y = amplada (55), z = altura.
   Vista: Vector3(x, z, y).
 - Constants del camp i del joc: src/sim/constants.gd, copiades de la referència.

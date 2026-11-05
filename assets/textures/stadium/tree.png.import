@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://chwxt5g8g6g4i"
-path="res://.godot/imported/crowd.png-d72dcd0c859c55132604fb484a4f9f95.ctex"
+uid="uid://dicfb0tha0h0q"
+path="res://.godot/imported/tree.png-3a4e27da7e46f7875f65a9bd4508047f.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://assets/textures/stadium/crowd.png"
-dest_files=["res://.godot/imported/crowd.png-d72dcd0c859c55132604fb484a4f9f95.ctex"]
+source_file="res://assets/textures/stadium/tree.png"
+dest_files=["res://.godot/imported/tree.png-3a4e27da7e46f7875f65a9bd4508047f.ctex"]
 
 [params]
 
