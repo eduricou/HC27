@@ -1,0 +1,11 @@
+.godot/
+/build/
+/reports/
+*.tmp
+
+# Configuració local de Claude Code (no es comparteix)
+.claude/settings.local.json
+
+# Fitxers que genera gdUnit4 en executar les proves
+/addons/gdUnit4/GdUnitRunner.cfg
+/GdUnitRunner.cfg

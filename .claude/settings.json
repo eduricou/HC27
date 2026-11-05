@@ -1,0 +1,25 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(bash tools/test.sh *)",
+      "Bash(bash tools/sim.sh *)",
+      "Bash(bash tools/lint.sh *)",
+      "Bash(bash tools/shot.sh *)",
+      "Bash(gdformat *)",
+      "Bash(gdlint *)",
+      "Bash(git status *)",
+      "Bash(git diff *)",
+      "Bash(git log *)",
+      "Bash(git add *)",
+      "Bash(git commit *)"
+    ],
+    "ask": [
+      "Bash(git push *)",
+      "Bash(bash tools/export.sh *)"
+    ],
+    "deny": [
+      "Bash(git push --force *)",
+      "Bash(rm -rf *)"
+    ]
+  }
+}

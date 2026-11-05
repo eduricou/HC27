@@ -1,0 +1,7 @@
+{
+  "godotTools.editorPath.godot4": "C:\\Tools\\Godot\\Godot_v4.7.2-stable_win64.exe",
+  "godotTools.lsp.headless": true,
+  "files.eol": "\n",
+  "[gdscript]": { "editor.insertSpaces": false, "editor.tabSize": 4 },
+  "files.exclude": { ".godot/": true }
+}
