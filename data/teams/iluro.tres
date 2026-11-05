@@ -1,0 +1,34 @@
+[gd_resource type="Resource" script_class="TeamData" format=3]
+
+[ext_resource type="Script" path="res://src/sim/team_data.gd" id="1_team"]
+
+[resource]
+script = ExtResource("1_team")
+id = "iluro"
+name = "Iluro HC"
+short = "ILU"
+city = "Mataró"
+color = "#f07c1a"
+ink = "#241002"
+mini = "#f07c1a"
+ring = "#ffb066"
+kit = {
+"collar": "#111214",
+"num": "#111214",
+"shirt": "#f07c1a",
+"shirt2": "#ffffff",
+"shorts": "#17181a",
+"socks": "#f4f4f0",
+"style": "iluro"
+}
+gk_kit = {
+"helmet": "#eceeea",
+"num": "#c4e84a",
+"pads": "#c4e84a",
+"shirt": "#1b1d20",
+"shirt2": "#c4e84a",
+"shorts": "#1b1d20",
+"socks": "#1b1d20",
+"style": "gk"
+}
+squad = [[1, "Pol Serra", "GK", 58, 56, 60, 38, 60, 66, 76], [2, "Biel Roca", "DF", 67, 71, 73, 54, 75, 70], [3, "Marc Vilaró", "DF", 64, 73, 75, 57, 77, 68], [4, "Arnau Puig", "DF", 65, 72, 74, 59, 76, 69], [5, "Jan Casals", "DF", 68, 71, 73, 56, 75, 71], [6, "Nil Ferrer", "MF", 68, 77, 79, 64, 70, 72], [8, "Oriol Bosch", "MF", 66, 79, 81, 66, 66, 70], [10, "Guim Soler", "MF", 69, 81, 80, 70, 62, 71], [7, "Quim Riera", "FW", 72, 79, 71, 76, 52, 70], [9, "Martí Pujol", "FW", 70, 80, 70, 79, 50, 68], [11, "Èric Camps", "FW", 73, 78, 69, 75, 50, 70]]

@@ -1,0 +1,34 @@
+[gd_resource type="Resource" script_class="TeamData" format=3]
+
+[ext_resource type="Script" path="res://src/sim/team_data.gd" id="1_team"]
+
+[resource]
+script = ExtResource("1_team")
+id = "polo"
+name = "Club Polo"
+short = "POL"
+city = "Barcelona"
+color = "#14234b"
+ink = "#ffffff"
+mini = "#f6f6f3"
+ring = "#9fb6ff"
+kit = {
+"band": "#c8102e",
+"num": "#14234b",
+"shirt": "#f6f6f3",
+"shirt2": "#14234b",
+"shorts": "#14234b",
+"socks": "#14234b",
+"style": "polo"
+}
+gk_kit = {
+"helmet": "#f4f4f2",
+"num": "#14234b",
+"pads": "#f2c500",
+"shirt": "#f2c500",
+"shirt2": "#14234b",
+"shorts": "#14234b",
+"socks": "#14234b",
+"style": "gk"
+}
+squad = [[1, "Àlex Bru", "GK", 60, 60, 64, 40, 62, 68, 78], [3, "Gerard Sala", "DF", 68, 73, 75, 56, 77, 71], [2, "Lluc Mas", "DF", 66, 74, 76, 57, 79, 69], [4, "Adrià Valls", "DF", 65, 73, 77, 61, 79, 69], [5, "Pau Torrent", "DF", 67, 74, 76, 59, 78, 70], [6, "Hugo Ribas", "MF", 69, 78, 80, 65, 69, 72], [8, "Bernat Coll", "MF", 67, 80, 81, 67, 66, 70], [10, "Jaume Olivé", "MF", 70, 81, 79, 71, 62, 71], [7, "Dani Prat", "FW", 73, 79, 71, 77, 52, 70], [9, "Carles Font", "FW", 71, 80, 71, 80, 50, 68], [11, "Roger Vidal", "FW", 74, 78, 69, 76, 51, 70]]
