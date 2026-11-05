@@ -1,6 +1,7 @@
-## Vista 3D del partit: camp, jugadors i pilota. Llegeix l'estat de la simulació a cada
-## pas (després del MatchRunner) i interpola entre els dos últims passos a cada fotograma
-## amb Engine.get_physics_interpolation_fraction(), per anar fluid a qualsevol fps.
+## Vista 3D del partit: jugadors i pilota (el camp i l'estadi són a scenes/stadium.tscn).
+## Llegeix l'estat de la simulació a cada pas (després del MatchRunner) i interpola entre
+## els dos últims passos a cada fotograma amb Engine.get_physics_interpolation_fraction(),
+## per anar fluid a qualsevol fps.
 ## No canvia mai l'estat de la simulació.
 class_name MatchView
 extends Node3D
@@ -31,7 +32,6 @@ var _snap_next := true
 func _ready() -> void:
 	# Després del MatchRunner, que fa el pas de simulació.
 	process_physics_priority = 10
-	add_child(GreyField.build())
 	_ball = MeshInstance3D.new()
 	_ball.name = "Pilota"
 	var sm := SphereMesh.new()

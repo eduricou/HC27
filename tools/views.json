@@ -1,0 +1,10 @@
+{
+  "_doc": "Angles de càmera fixos per comparar captures de la web (tools/shot_web.mjs) i de Godot (tools/shot_views.sh). Coordenades de la simulació (x llargada, y amplada cap a la càmera TV, z altura) i w = amplada visible a la distància de l'objectiu, com CAM a la web (línia 1208).",
+  "tv": {"ex": 0, "ey": 53.5, "ez": 13, "tx": 0, "ty": -1.5, "tz": 0, "w": 33},
+  "tv_porteria": {"ex": 34.7, "ey": 53.5, "ez": 13, "tx": 34.7, "ty": -1.5, "tz": 0, "w": 33},
+  "ampla": {"ex": -78, "ey": 91.5, "ez": 46, "tx": -6, "ty": -22, "tz": 6, "w": 170},
+  "repeticio": {"ex": 50.3, "ey": 2.5, "ez": 5.2, "tx": 9.14, "ty": 0, "tz": 0.5, "w": 30},
+  "grada": {"ex": 12, "ey": 29.5, "ez": 1.7, "tx": 0, "ty": -42, "tz": 6, "w": 80},
+  "porteria": {"ex": 36, "ey": 9, "ez": 2.6, "tx": 46.5, "ty": 0, "tz": 1.0, "w": 11},
+  "porteria_lateral": {"ex": 46.4, "ey": 8, "ez": 1.6, "tx": 46.4, "ty": 0, "tz": 1.0, "w": 5}
+}

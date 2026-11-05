@@ -21,6 +21,8 @@ var tx := 0.0
 var ty := -2.0
 var tz := 0.0
 var w := 44.0
+## Si no és buit, angle fix [ex, ey, ez, tx, ty, tz, w] (captures de tools/shot_views.sh).
+var fixed := PackedFloat64Array()
 
 
 func _ready() -> void:
@@ -30,6 +32,9 @@ func _ready() -> void:
 
 
 func _process(delta: float) -> void:
+	if not fixed.is_empty():
+		_set_view(fixed)
+		return
 	if runner == null or runner.sim == null or view == null:
 		return
 	var g := tv_target()
@@ -46,9 +51,22 @@ func _process(delta: float) -> void:
 
 ## Posa la càmera directament al seu objectiu (partit nou, captures).
 func snap() -> void:
-	if runner == null or runner.sim == null or view == null:
-		return
-	var g := tv_target()
+	if not fixed.is_empty():
+		_set_view(fixed)
+	elif runner and runner.sim and view:
+		_set_view(tv_target())
+
+
+## Angle fix a partir d'un diccionari com els de tools/views.json (buit: torna a la TV).
+func set_fixed(v: Dictionary) -> void:
+	if v.is_empty():
+		fixed = PackedFloat64Array()
+	else:
+		fixed = PackedFloat64Array([v["ex"], v["ey"], v["ez"], v["tx"], v["ty"], v["tz"], v["w"]])
+	snap()
+
+
+func _set_view(g: PackedFloat64Array) -> void:
 	ex = g[0]
 	ey = g[1]
 	ez = g[2]

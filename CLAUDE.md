@@ -6,8 +6,9 @@ al Camp Municipal d'Hoquei de Mataró. És un port de la versió web: reference/
 Regles, constants i toleràncies: docs/regles.md. Decisions: docs/decisions/.
 
 ## Estat
-- Fases 0 (preparació), 1 (simulació headless) i 2 (primer jugable amb caixes grises) fetes
-  el 5/11/2026. Següent: fase 3 (estadi i gespa), pla §9 i §10.
+- Fases 0 (preparació), 1 (simulació headless), 2 (primer jugable amb caixes grises) i
+  3 (estadi i gespa) fetes el 5/11/2026. Següent: fase 4 (jugadors riggejats i animacions),
+  pla §9 i §10.
 - La referència és la versió de 2.029 línies, no la «v4» del pla original (docs/decisions/0001).
 - La simulació de src/sim/ reprodueix la web pas a pas amb la mateixa llavor
   (docs/decisions/0002). Un partit triga ~10 s en un procés i ens hi quedem: el criteri és
@@ -33,9 +34,15 @@ Regles, constants i toleràncies: docs/regles.md. Decisions: docs/decisions/.
 - Reimportar recursos: `"$GODOT" --headless --path . --import`
 - Captures per revisar visualment: `bash tools/shot.sh <escenari> [fotogrames]` → PNG a build/shots/
   Escenaris (src/game/main.gd): menu, intro, match, human, pc, pause, break, full.
+- Comparar amb la web des dels angles fixos de tools/views.json:
+  `node tools/shot_web.mjs [angles] [hores]` → build/shots/web/ ·
+  `bash tools/shot_views.sh [angles] [hores] [qualitat]` → build/shots/godot/ (<angle>_<tarda|nit>.png)
+- Textures de l'estadi (assets/textures/stadium/*.png): `bash tools/bake_textures.sh` (obre
+  una finestra; és el port de les funcions make*() de la web).
 - Recorregut complet sense pantalla (partit → descansos → final → menú; falla si hi ha errors
   o avisos a la consola): `bash tools/smoke.sh`. Passa-ho després de tocar src/game o src/ui.
-- Fps a 1920×1080 sense VSync: `bash tools/bench.sh [segons]` (obre una finestra).
+- Fps a 1920×1080 sense VSync: `bash tools/bench.sh [segons] [qualitat] [hora] [res3d] [qset]`
+  (obre una finestra). res3d=2560x1440 per estimar 1440p; qset=msaa=0,ssao=false per provar.
 - Exportació: `bash tools/export.sh` (sempre demana confirmació)
 - Referència web: `node tools/golden_headless.mjs [N] [qlen] [sortida]` (Edge headless)
 
@@ -56,8 +63,17 @@ Regles, constants i toleràncies: docs/regles.md. Decisions: docs/decisions/.
   CameraRig és la càmera TV i HumanController omple SimInput. Accions d'entrada:
   InputActions, registrades en temps d'execució. HUD i menú: src/ui/, construïts des del codi
   fins a la fase 5 (docs/decisions/0004).
-- Coords.to_view() és una reflexió: a les malles generades cal `cull_mode = CULL_DISABLED`
-  (o invertir l'ordre dels vèrtexs), si no les cares no es veuen.
+- Coords.to_view() és una reflexió: les malles generades s'han de fer amb MeshBuilder
+  (src/game/stadium/mesh_builder.gd), que orienta cada triangle segons la normal, o amb
+  `cull_mode = CULL_DISABLED`; si no, les cares no es veuen.
+- L'estadi (scenes/stadium.tscn, src/game/stadium/) es construeix per codi amb les mesures
+  de StadiumLayout (les de glInit() a la web). Porta també la llum (tarda: sol; nit: 4
+  focus), el cel i l'entorn. Shader globals a project.godot: night, crowd_jump, led_scroll.
+  L'estadi fix va a la capa 2 i els focus de nit no en fan ombra (shadow_caster_mask).
+  Efectes del partit (xarxa, públic): StadiumFx, que llegeix els esdeveniments de cada pas.
+- Presets de qualitat: src/game/quality.gd (`--quality=baixa|mitjana|alta|ultra`, per defecte
+  alta). Arguments del joc: `--time=tarda|nit` (per defecte nit, com la web). Decisions de la
+  fase 3: docs/decisions/0005.
 - Unitats en metres i segons. Simulació: x = llargada (91,4), y = amplada (55), z = altura.
   Vista: Vector3(x, z, y).
 - Constants del camp i del joc: src/sim/constants.gd, copiades de la referència.

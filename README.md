@@ -21,8 +21,10 @@ Port per a Windows 11 del joc web *Estic Hoquei Herba*: Iluro HC contra Club Pol
 | Format i lint | `bash tools/lint.sh` |
 | Estadístiques de la simulació | `bash tools/sim.sh 50` |
 | Captura de pantalla | `bash tools/shot.sh menu` |
+| Captures des dels angles fixos (Godot / web) | `bash tools/shot_views.sh` · `node tools/shot_web.mjs` |
+| Regenerar les textures de l'estadi | `bash tools/bake_textures.sh` |
 | Recorregut automàtic (menú → partit → final) | `bash tools/smoke.sh` |
-| Fps a 1080p | `bash tools/bench.sh` |
+| Fps (preset, tarda o nit, 1440p) | `bash tools/bench.sh 10 baixa nit` · `bash tools/bench.sh 10 alta nit 2560x1440` |
 | Exportar l'`.exe` i el zip | `bash tools/export.sh` |
 | Regenerar la referència web | `node tools/golden_headless.mjs` |
 
@@ -31,4 +33,5 @@ Port per a Windows 11 del joc web *Estic Hoquei Herba*: Iluro HC contra Club Pol
 - **Fase 0 (preparació):** feta. Hi ha l'esquelet del projecte, les proves i el lint funcionen, les estadístiques de referència de la web estan generades i l'exportació d'un `.exe` buit funciona.
 - **Fase 1 (simulació headless):** feta. `src/sim/` reprodueix la web pas a pas amb la mateixa llavor. Hi ha 43 proves, i les mitjanes de 50 partits queden dins del ±20 %. Un partit triga unes 10 s en un procés; 50 partits en paral·lel, 2–3 minuts, que és el criteri acordat (vegeu `docs/decisions/0003`).
 - **Fase 2 (primer jugable amb caixes grises):** feta. Hi ha camp pla amb línies, jugadors com a càpsules, càmera TV, teclat i comandament, HUD mínim, pausa, descansos i menú amb un partit de fons. Va a uns 355 fps a 1080p.
-- **Fase 3 (estadi i gespa):** és la següent.
+- **Fase 3 (estadi i gespa):** feta. Hi ha l'estadi en 3D (gespa amb shader, grada amb públic, tanques LED, banquetes, torres de llum, casa del club, pins i ciutat), porteries amb xarxa que es mou, llum de tarda i de nit, i presets de qualitat. Fa 183–230 fps amb *Baixa* a 1080p i 72–97 fps amb *Alta* a 1440p en una gràfica integrada (`docs/decisions/0005`).
+- **Fase 4 (jugadors riggejats i animacions):** és la següent.

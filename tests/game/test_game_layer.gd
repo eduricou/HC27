@@ -1,5 +1,5 @@
 # Proves de la capa de joc de la fase 2 que no necessiten pantalla: entrada, coordenades,
-# camp, HUD i el MatchRunner (pausa, descansos i final).
+# HUD i el MatchRunner (pausa, descansos i final). L'estadi: test_stadium.gd.
 extends GdUnitTestSuite
 
 const HL := Constants.HL
@@ -52,37 +52,6 @@ func test_orientacio_dels_jugadors() -> void:
 		assert_float(fwd.x).is_equal_approx(cos(face), 1e-5)
 		assert_float(fwd.z).is_equal_approx(sin(face), 1e-5)
 	n.free()
-
-
-# --- Camp ---------------------------------------------------------------------------
-
-
-func test_linies_dins_del_camp() -> void:
-	var mesh := GreyField.line_mesh()
-	var box := mesh.get_aabb()
-	var m := GreyField.LINE_W * 0.5
-	assert_float(box.position.x).is_equal_approx(-HL - m, 0.01)
-	assert_float(box.end.x).is_equal_approx(HL + m, 0.01)
-	assert_float(box.position.z).is_equal_approx(-HW - m, 0.01)
-	assert_float(box.end.z).is_equal_approx(HW + m, 0.01)
-
-
-func test_contorn_del_cercle_igual_que_in_circle() -> void:
-	for side: int in [-1, 1]:
-		for p in GreyField.circle_points(side, Constants.CR):
-			# Els punts del contorn són just a la vora: a dins amb una mica de marge.
-			assert_bool(Constants.in_circle(p.x, p.y, side, Constants.CR + 0.01)).is_true()
-			assert_bool(Constants.in_circle(p.x, p.y, side, Constants.CR - 0.05)).is_false()
-
-
-func test_camp_te_dues_porteries() -> void:
-	var field := GreyField.build()
-	var goals := 0
-	for c in field.get_children():
-		if c.name.begins_with("Porteria"):
-			goals += 1
-	assert_int(goals).is_equal(2)
-	field.free()
 
 
 # --- HUD --------------------------------------------------------------------------

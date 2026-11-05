@@ -4,6 +4,7 @@ Registre de l'origen i la llicència de cada recurs que entra al joc (models, te
 
 | Recurs | Ruta | Origen | Llicència | Notes |
 |---|---|---|---|---|
+| Textures de l'estadi | `textures/stadium/*.png` | Generades per `tools/bake_textures.gd` (port del dibuix amb canvas de la web) | Pròpies del projecte | El text de les tanques LED, del frontal de la grada i de la casa del club està dibuixat amb la lletra Bahnschrift de Windows i desat com a imatge. El joc no inclou el fitxer de la lletra. |
 
 ## Addons i eines dins del repositori
 

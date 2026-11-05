@@ -27,10 +27,32 @@ window/stretch/aspect="expand"
 
 enabled=PackedStringArray("res://addons/gdUnit4/plugin.cfg")
 
+[importer_defaults]
+
+texture={
+"detect_3d/compress_to": 0,
+"mipmaps/generate": true
+}
+
 [physics]
 
 common/physics_ticks_per_second=60
 common/physics_jitter_fix=0.0
+
+[shader_globals]
+
+night={
+"type": "float",
+"value": 1.0
+}
+crowd_jump={
+"type": "float",
+"value": 0.0
+}
+led_scroll={
+"type": "float",
+"value": 0.0
+}
 
 [rendering]
 
