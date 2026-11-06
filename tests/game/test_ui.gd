@@ -64,6 +64,8 @@ func test_sense_fitxer_les_opcions_per_defecte() -> void:
 	assert_str(s.quality).is_equal(Quality.DEFAULT)
 	assert_bool(s.night).is_true()
 	assert_float(s.fsr).is_equal(1.0)
+	# La càmera àmplia és la preferida de l'usuari (la web començava amb la TV).
+	assert_str(s.cam).is_equal("ampla")
 
 
 func test_opcions_dolentes_no_trenquen_res() -> void:

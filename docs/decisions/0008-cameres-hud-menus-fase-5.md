@@ -52,7 +52,7 @@ Amb peces auxiliars: `Minimap`, `PlayerMarker`, `Wipe`, `MenuPlate` i `KitPrevie
 
 | Mode | Quan | Com |
 |---|---|---|
-| TV | Per defecte | Com la web (`tvTarget()`). Amb l'opció «Àmplia», més alta i més lluny. |
+| TV | Quan no hi ha cap altre mode | Com la web (`tvTarget()`). Amb l'opció «Àmplia», més alta i més lluny. Des de la fase 6, l'àmplia és la de per defecte, perquè a l'usuari li agrada més; al menú hi ha totes dues. |
 | Presentació | Mentre dura `intro_t` (4,2 s) | Vol des de l'aire fins a la posició de la TV, amb sortida i arribada suaus (`camTarget()`). |
 | Gol | 0,7 s després del gol | Primer pla del golejador. |
 | Repetició | Mentre dura la repetició | Tres angles amb talls entre ells (vegeu més avall). |

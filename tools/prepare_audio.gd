@@ -2,9 +2,12 @@
 ## - Kenney «Impact Sounds» i «Interface Sounds» (kenney.nl), descomprimits a
 ##   <carpeta>/kenney/impact/ i <carpeta>/kenney/interface/;
 ## - BigSoundBank (bigsoundbank.com), els OGG pel número: <carpeta>/bsb/<número>.ogg
-##   (https://bigsoundbank.com/UPLOAD/ogg/<número>.ogg).
-## Copia els que es fan servir amb noms clars, retalla el xiulet i genera el «whoosh» de la
-## cortineta. Ús: "$GODOT" --headless --path . -s res://tools/prepare_audio.gd -- <carpeta>
+##   (https://bigsoundbank.com/UPLOAD/ogg/<número>.ogg);
+## - el xiulet d'àrbitre de Wikimedia Commons («218318 splicesound
+##   referee-whistle-blow-gymnasium.wav», de SpliceSound), a <carpeta>/commons/referee_gym.wav.
+## Copia els que es fan servir amb noms clars, prepara el bufet curt i el llarg del xiulet
+## i genera el «whoosh» de la cortineta.
+## Ús: "$GODOT" --headless --path . -s res://tools/prepare_audio.gd -- <carpeta>
 extends SceneTree
 
 const OUT := "res://assets/audio"
@@ -37,15 +40,21 @@ const BSB := {
 	"crowd/cheer_0": "0236",  # Shouts and Applauses of Teens #1
 	"crowd/cheer_1": "0237",
 }
-## Xiulet: el bufet llarg de «Whistle, plastic #3» (BigSoundBank 1141), de 5,46 s a 8,62 s.
-const WHISTLE := ["1141", 5.46, 8.62]
+## Xiulet d'àrbitre (amb bola: la nota tremola entre 2,6 i 2,9 kHz unes 60 vegades per
+## segon). El bufet va de 0,13 s a 0,54 s i després hi ha l'eco d'un pavelló.
+const WHISTLE := "commons/referee_gym.wav"
+## Bufet curt: el natural, amb 0,76 s d'eco. Bufet llarg: s'hi repeteix el tros estable del
+## mig (0,22–0,45 s) dues vegades, amb fosos de 40 ms.
+const WHISTLE_START := 0.10
+const WHISTLE_END := 1.30
+const WHISTLE_LOOP: Array[float] = [0.22, 0.45]
 const RATE := 44100
 
 
 func _initialize() -> void:
 	var args := OS.get_cmdline_user_args()
 	if args.is_empty():
-		printerr("Ús: -s res://tools/prepare_audio.gd -- <carpeta amb kenney/ i bsb/>")
+		printerr("Ús: -s res://tools/prepare_audio.gd -- <carpeta amb kenney/, bsb/ i commons/>")
 		quit(2)
 		return
 	var src := args[0]
@@ -58,11 +67,20 @@ func _initialize() -> void:
 		n += _copy_variants(src + "/kenney/interface/Audio", key, INTERFACE[key])
 	for key: String in BSB:
 		n += _copy(src + "/bsb/" + BSB[key] + ".ogg", "%s/%s.ogg" % [OUT, key])
-	var whistle := _trim(src + "/bsb/" + WHISTLE[0] + ".ogg", WHISTLE[1], WHISTLE[2])
-	_save_wav(whistle, OUT + "/sfx/whistle.wav")
+	var full := _trim(src + "/" + WHISTLE, 0.0, 3.3)
+	var short := _fade_tail(_slice(full, WHISTLE_START, WHISTLE_END), 0.3)
+	var long := _slice(full, WHISTLE_START, WHISTLE_LOOP[1])
+	for k in 2:
+		long = _join(long, _slice(full, WHISTLE_LOOP[0], WHISTLE_LOOP[1]), 0.04)
+	long = _fade_tail(_join(long, _slice(full, WHISTLE_LOOP[0], WHISTLE_END), 0.04), 0.3)
+	_save_wav(short, OUT + "/sfx/whistle_short.wav")
+	_save_wav(long, OUT + "/sfx/whistle_long.wav")
 	_save_wav(whoosh(), OUT + "/ui/whoosh.wav")
 	print(
-		"Sons preparats: %d copiats, xiulet (%.2f s) i whoosh." % [n, whistle.size() / float(RATE)]
+		(
+			"Sons preparats: %d copiats, xiulet curt (%.2f s) i llarg (%.2f s), i whoosh."
+			% [n, short.size() / float(RATE), long.size() / float(RATE)]
+		)
 	)
 	quit()
 
@@ -84,9 +102,39 @@ func _copy(from: String, to: String) -> int:
 	return 1
 
 
+## Tros de t0 a t1 segons (sense fosos).
+static func _slice(x: PackedFloat32Array, t0: float, t1: float) -> PackedFloat32Array:
+	return x.slice(int(t0 * RATE), int(t1 * RATE))
+
+
+## Uneix b darrere de a, fonent-los durant `secs` (potència constant).
+static func _join(a: PackedFloat32Array, b: PackedFloat32Array, secs: float) -> PackedFloat32Array:
+	var n := mini(int(secs * RATE), mini(a.size(), b.size()))
+	var out := a.slice(0, a.size() - n)
+	for i in n:
+		var u := float(i) / n
+		out.append(a[a.size() - n + i] * cos(u * PI * 0.5) + b[i] * sin(u * PI * 0.5))
+	out.append_array(b.slice(n))
+	return out
+
+
+## Apaga suaument els últims `secs` segons (la cua de l'eco).
+static func _fade_tail(x: PackedFloat32Array, secs: float) -> PackedFloat32Array:
+	var n := mini(int(secs * RATE), x.size())
+	for i in n:
+		x[x.size() - n + i] *= 1.0 - float(i) / n
+	return x
+
+
 ## Mostres mono (−1..1) del fitxer, de t0 a t1 segons, amb 5 ms d'entrada i 40 ms de sortida.
+## El descodificador les dona a la freqüència del mesclador (44,1 kHz), sigui quina sigui la
+## del fitxer.
 static func _trim(path: String, t0: float, t1: float) -> PackedFloat32Array:
-	var st := AudioStreamOggVorbis.load_from_file(path)
+	var st: AudioStream = (
+		AudioStreamOggVorbis.load_from_file(path)
+		if path.ends_with(".ogg")
+		else AudioStreamWAV.load_from_file(path)
+	)
 	var pb := st.instantiate_playback()
 	pb.start(t0)
 	var n := int((t1 - t0) * RATE)

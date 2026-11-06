@@ -26,11 +26,15 @@ La web sintetitza tots els sons amb WebAudio (`SFX`, línies 1052–1089): sorol
 |---|---|
 | Kenney, *Impact Sounds* | Fusta lleugera (passades), fusta mitjana (cops i xuts), fusta forta (entrades), impacte genèric (recepcions i rebots), toc suau (pilota a la gespa), taulell (taula de fons), metall (pal de la porteria), cop encoixinat (proteccions del porter) i impacte suau fort (xarxa). |
 | Kenney, *Interface Sounds* | El focus, el clic, enrere i el canvi de jugador. |
-| BigSoundBank | El murmuri del públic, en dues capes: gent d'un poble petit (80 s) i 50–60 persones parlant (108 s). Aplaudiments de 25–50 persones a l'aire lliure. Crits d'alegria. El xiulet. |
+| BigSoundBank | El murmuri del públic, en dues capes: gent d'un poble petit (80 s) i 50–60 persones parlant (108 s). Aplaudiments de 25–50 persones a l'aire lliure. Crits d'alegria. |
+| Wikimedia Commons | El xiulet: un xiulet d'àrbitre real (SpliceSound), gravat en un pavelló. |
 
 - **Com s'han triat:** sense escoltar-los, analitzant-los amb Godot: durada, nivell segon a segon, segments i freqüència dominant.
   - Per al públic, s'han triat gravacions amb un nivell estable.
-  - Per al xiulet, un bufet llarg i continu a 2,5 kHz, que és la zona d'un xiulet d'àrbitre.
+  - Per al xiulet, primer es va fer servir un bufet llarg d'un xiulet de plàstic de BigSoundBank, tallat a la durada de cada xiulada. Provant el joc, l'usuari va dir que no era realista.
+    - L'anàlisi ho confirmava: era una nota fixa de 2,5 kHz, sense el tremolor de la bola.
+    - S'ha canviat per un xiulet d'àrbitre real, amb la nota que tremola entre 2,6 i 2,9 kHz unes 60 vegades per segon.
+    - Els bufets ja no es tallen: n'hi ha un de curt (l'original, 0,41 s) i un de llarg (0,98 s, repetint el tros estable del mig), tots dos amb la seva entrada natural i l'eco del pavelló.
 - **El públic és petit**, com el del camp real de l'Iluro (decisió 0006): unes desenes de persones, no un estadi.
 - **`tools/prepare_audio.gd`** ho fa tot a partir dels paquets baixats:
   - copia els sons amb noms del joc (`assets/audio/sfx`, `ui` i `crowd`);
@@ -57,7 +61,7 @@ La web sintetitza tots els sons amb WebAudio (`SFX`, línies 1052–1089): sorol
 | `save` | Proteccions del porter, aplaudiments i el públic s'anima. |
 | `post` | Metall del pal. El públic s'aixeca. |
 | `goal`, `net` | Per sota de 46 cm, el «bum» de la taula de fons; per sobre, la xarxa. Si marca l'Iluro, que juga a casa, crits i aplaudiments; si marca el Polo, uns quants aplaudiments. |
-| `whistle` | `count` bufets de `strength` segons, com `SFX.whistle(dur, n)`. És un sol bufet llarg que es talla amb una sortida de 40 ms. |
+| `whistle` | `count` bufets, com `SFX.whistle(dur, n)`. Per sota de 0,5 s fa el bufet curt (faltes, sortides, gol) i, a partir d'aquí, el llarg (servei inicial, finals de quart). |
 | `intro_end`, `quarter_end` | Aplaudiments. |
 | `pc` | El públic s'anima. |
 | `switch`, `wipe` | Clic i «whoosh», al bus Interfície. |
@@ -71,6 +75,7 @@ La web sintetitza tots els sons amb WebAudio (`SFX`, línies 1052–1089): sorol
 - Puja quan la pilota s'acosta a una porteria i als córners curts.
 - Salta amb els gols, les aturades i el pal, i torna a baixar sol en uns 4 s, com `SFX.crowd()`.
 - Amb la pausa baixa 10 dB.
+- Provant el joc, l'usuari el va trobar massa fort. S'ha baixat 8 dB, i els crits i aplaudiments, 5–6 dB.
 - Al menú, el partit de demostració sona 10 dB més fluix.
 
 **Altres detalls:**
@@ -82,9 +87,7 @@ La web sintetitza tots els sons amb WebAudio (`SFX`, línies 1052–1089): sorol
 
 - Quatre busos: General (Master), Ambient, Efectes i Interfície (`AudioBuses`). Els volums es desen a les opcions (fase 5).
 - **Limitador:** el Master porta un `AudioEffectHardLimiter` amb el sostre a −0,5 dBFS. Per molts sons que coincideixin, no pot saturar.
-- **Marge:** la barreja s'ha ajustat amb mesures (vegeu «Mesures»).
-  - Al pitjor moment, quan coincideixen el gol, el xiulet i els crits, el limitador hi treu menys d'1 dB.
-  - La resta del temps no treballa.
+- **Marge:** la barreja s'ha ajustat amb mesures (vegeu «Mesures»). Amb la barreja final, ni al pitjor moment (quan coincideixen el gol, el xiulet i els crits) el limitador no ha de treballar: el pic queda a −4,4 dBFS.
 - **Com es mesura:** `tools/audio_check.sh` grava el so d'un partit amb el Movie Maker de Godot (60 s amb la llavor 1, que té tres gols) i en mesura el pic i les mostres retallades.
 
 ### 4. Vibració del comandament (`Rumble`)
@@ -112,9 +115,10 @@ Només per a l'equip de l'humà, mai a la repetició. Es pot desactivar a Opcion
 | Barreja | Durada | Pic | Mostres retallades | Segon més fort | Mitjana |
 |---|---|---|---|---|---|
 | Primera, sense guany | 60 s (tres gols) | −4,2 dBFS | 0 | −19,6 dB RMS (el primer gol) | −29,9 dB RMS |
-| Final: +4 dB, i el públic +5 dB més | 15 s (el primer gol) | −0,5 dBFS (el sostre del limitador) | 0 | −15,7 dB RMS | −23,6 dB RMS |
+| Segona: +4 dB, i el públic +5 dB més | 15 s (el primer gol) | −0,5 dBFS (el sostre del limitador) | 0 | −15,7 dB RMS | −23,6 dB RMS |
+| Final, després de la prova de l'usuari: el públic −8 dB i el xiulet nou | 15 s (el primer gol) | −4,4 dBFS | 0 | −18,3 dB RMS | −27,4 dB RMS |
 
-La primera barreja era massa fluixa. Amb la final, el pic del gol supera per poc el sostre i el limitador el retalla a −0,5 dBFS sense que cap mostra quedi retallada. Gravar 60 s amb el Movie Maker triga uns 17 minuts.
+La primera barreja era massa fluixa. A la segona, el pic del gol superava per poc el sostre i el limitador el retallava a −0,5 dBFS, sense cap mostra retallada. L'usuari va trobar el públic massa fort i s'ha baixat: ara el pic queda lluny del sostre. Gravar 60 s amb el Movie Maker triga uns 17 minuts.
 
 ## Com es comprova
 

@@ -48,8 +48,9 @@ var diff := "normal"
 var qlen := 150.0
 ## Com a la web, per defecte el partit és de nit.
 var night := true
-## Càmera del partit: "tv" o "ampla".
-var cam := "tv"
+## Càmera del partit: "tv" o "ampla". Per defecte, l'àmplia (la web hi posa la TV, però a
+## l'usuari li agrada més; totes dues són al menú).
+var cam := "ampla"
 ## Càmera darrere de la porteria als córners curts.
 var pc_cam := true
 ## Vibració del comandament en xuts, entrades i gols.
@@ -81,7 +82,7 @@ func load_file(path: String = PATH) -> bool:
 	var ql := float(cf.get_value("partit", "quart", qlen))
 	qlen = ql if ql in QLENS else 150.0
 	night = bool(cf.get_value("partit", "nit", night))
-	cam = "ampla" if str(cf.get_value("partit", "camera", cam)) == "ampla" else "tv"
+	cam = "tv" if str(cf.get_value("partit", "camera", cam)) == "tv" else "ampla"
 	pc_cam = bool(cf.get_value("joc", "camera_corner", pc_cam))
 	vibration = bool(cf.get_value("joc", "vibracio", vibration))
 	return true

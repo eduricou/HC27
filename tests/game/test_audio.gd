@@ -89,6 +89,22 @@ func test_el_xiulet_fa_tants_bufets_com_toca() -> void:
 	assert_int(_snd.pending_blasts()).is_equal(3)
 
 
+func test_xiulet_curt_per_a_les_faltes_i_llarg_per_als_finals() -> void:
+	_snd.whistle(0.28, 1)
+	_snd._process(0.0)
+	assert_array(_names()).contains([&"sfx/whistle_short"])
+	_snd.played.clear()
+	_snd.whistle(0.7, 2)
+	_snd._process(0.0)
+	assert_array(_names()).contains([&"sfx/whistle_long"])
+	# El segon bufet espera que s'acabi el primer (0,98 s) i la pausa entre bufets.
+	assert_int(_snd.pending_blasts()).is_equal(1)
+	_snd._process(0.9)
+	assert_int(_snd.pending_blasts()).is_equal(1)
+	_snd._process(0.3)
+	assert_int(_snd.pending_blasts()).is_equal(0)
+
+
 func test_el_pal_sona_mes_fort_com_mes_rapid() -> void:
 	var s := _sim.s
 	var p := s.teams[0].players[5]

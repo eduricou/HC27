@@ -36,11 +36,17 @@ const SILENT := {
 ## Alçada de la taula de fons de la porteria (m): per sota, el gol fa «bum».
 const BACKBOARD_H := 0.46
 const WHISTLE_GAP := 0.14
+## Durada del bufet curt i del llarg del xiulet d'àrbitre (assets/audio/sfx/whistle_*.wav).
+## Els xiulets de 0,5 s o més (servei inicial, finals de quart) fan el llarg.
+const WHISTLE_SHORT := 0.41
+const WHISTLE_LONG := 0.98
+const WHISTLE_DB := -12.0
 ## Murmuri del públic (dB) en calma i amb la màxima emoció.
-const CROWD_DB: Array[float] = [-10.0, -14.0]
-const CROWD_RANGE := 9.0
-## Guany de tota la barreja del partit. Amb +4 dB, al gol (el moment més fort) el
-## limitador del Master hi treu menys d'1 dB (tools/audio_check.sh, docs/decisions/0009).
+const CROWD_DB: Array[float] = [-18.0, -22.0]
+const CROWD_RANGE := 7.0
+## Guany de tota la barreja del partit. Al gol (el moment més fort), el pic queda a uns
+## −4 dBFS i el limitador del Master no hi ha de fer res (tools/audio_check.sh,
+## docs/decisions/0009).
 const MIX_DB := 4.0
 
 var runner: MatchRunner
@@ -56,8 +62,9 @@ var excitement := 0.0
 
 var _voices: Array[AudioStreamPlayer3D] = []
 var _next_voice := 0
-var _whistle: AudioStreamPlayer
-var _whistle_tween: Tween
+## Dos reproductors per al xiulet: l'eco d'un bufet encara sona quan comença el següent.
+var _whistles: Array[AudioStreamPlayer] = []
+var _next_whistle := 0
 var _blasts: Array = []
 var _crowd: Array[AudioStreamPlayer] = []
 var _reactions: Array[AudioStreamPlayer] = []
@@ -81,8 +88,8 @@ func _ready() -> void:
 		p.panning_strength = 0.6
 		add_child(p)
 		_voices.append(p)
-	_whistle = _player(&"Efectes")
-	_whistle.stream = SfxBank.pick(&"sfx/whistle")
+	for i in 2:
+		_whistles.append(_player(&"Efectes"))
 	for snd in [&"crowd/murmur_a", &"crowd/murmur_b"]:
 		var c := _player(&"Ambient")
 		var st: AudioStream = SfxBank.pick(snd)
@@ -201,7 +208,7 @@ func play_event(s: MatchState, e: Dictionary) -> void:
 			_hit(&"sfx/tackle", pos, -9.0, SfxBank.randf_range(1.2, 1.45))
 		&"save":
 			_hit(&"sfx/pads", at, -4.0, SfxBank.randf_range(0.9, 1.1))
-			_react(&"crowd/applause", -13.0)
+			_react(&"crowd/applause", -18.0)
 			_bump(0.5)
 		&"post":
 			_hit(&"sfx/post", at, -3.0, SfxBank.randf_range(0.95, 1.05))
@@ -213,17 +220,17 @@ func play_event(s: MatchState, e: Dictionary) -> void:
 			# L'Iluro juga a casa: els seus gols, crits i aplaudiments; els del Polo, uns
 			# quants aplaudiments dels seus.
 			if int(e.get("team", 0)) == 0:
-				_react(&"crowd/cheer", -3.0)
-				_react(&"crowd/applause", -7.0)
+				_react(&"crowd/cheer", -9.0)
+				_react(&"crowd/applause", -13.0)
 			else:
-				_react(&"crowd/applause", -12.0)
+				_react(&"crowd/applause", -17.0)
 			_bump(1.0)
 		&"whistle":
 			whistle(float(e.get("strength", 0.3)), int(e.get("count", 1)))
 		&"intro_end":
-			_react(&"crowd/applause", -11.0)
+			_react(&"crowd/applause", -16.0)
 		&"quarter_end":
-			_react(&"crowd/applause", -9.0)
+			_react(&"crowd/applause", -14.0)
 		&"pc":
 			_bump(0.6)
 		&"switch":
@@ -234,30 +241,31 @@ func play_event(s: MatchState, e: Dictionary) -> void:
 			excitement *= 0.5
 
 
-## Bufets del xiulet, com SFX.whistle(dur, n): n bufets de dur segons separats 0,14 s.
+## Bufets del xiulet, com SFX.whistle(dur, n): n bufets separats 0,14 s. Cada bufet és
+## sencer (amb la seva entrada i la seva cua): curt per sota de 0,5 s i llarg a partir d'aquí.
 func whistle(dur: float, count: int) -> void:
+	var long := dur >= 0.5
+	var length := WHISTLE_LONG if long else WHISTLE_SHORT
 	var t := 0.0
 	for k in maxi(1, count):
-		_blasts.append([t, dur])
-		t += dur + WHISTLE_GAP
+		_blasts.append([t, long])
+		t += length + WHISTLE_GAP
 
 
 func pending_blasts() -> int:
 	return _blasts.size()
 
 
-func _blast(dur: float) -> void:
-	if _whistle_tween:
-		_whistle_tween.kill()
-	_whistle.volume_db = -9.0 + level_db + MIX_DB
-	_note(&"sfx/whistle", _whistle.volume_db)
-	if silent:
-		return
-	_whistle.play()
-	_whistle_tween = create_tween()
-	_whistle_tween.tween_interval(maxf(0.0, dur - 0.04))
-	_whistle_tween.tween_property(_whistle, "volume_db", -60.0, 0.04)
-	_whistle_tween.tween_callback(_whistle.stop)
+func _blast(long: bool) -> void:
+	var p := _whistles[_next_whistle]
+	_next_whistle = (_next_whistle + 1) % _whistles.size()
+	var sound := &"sfx/whistle_long" if long else &"sfx/whistle_short"
+	p.stream = SfxBank.pick(sound)
+	p.volume_db = WHISTLE_DB + level_db + MIX_DB
+	p.pitch_scale = SfxBank.randf_range(0.98, 1.02)
+	_note(sound, p.volume_db)
+	if not silent:
+		p.play()
 
 
 ## Gol o pilota a la xarxa: per sota de la taula de fons, el «bum» de la fusta.

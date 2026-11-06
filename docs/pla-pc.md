@@ -607,13 +607,14 @@ Les durades són orientatives i suposen una sola persona a temps parcial.
 - El so respon a tots els esdeveniments.
 
 **Fet (6/11/2026).**
-- **Sons:** reals i CC0, de Kenney (cops, porteria, interfície) i de BigSoundBank (públic i xiulet). Els prepara `tools/prepare_audio.gd`.
+- **Sons:** reals i CC0, de Kenney (cops, porteria, interfície), de BigSoundBank (públic) i de Wikimedia Commons (un xiulet d'àrbitre real, que substitueix un xiulet de plàstic poc realista). Els prepara `tools/prepare_audio.gd`.
   - El pal sona més fort com més de pressa va la pilota.
   - El gol baix fa el «bum» de la taula de fons i el gol alt sona a la xarxa.
   - La pilota sona en caure a la gespa.
   - El públic és petit, com el del camp de l'Iluro: murmura, s'anima a prop de la porteria i als córners curts, i crida i aplaudeix els gols.
   - Els cops sonen en 3D al lloc on passen.
 - **Busos:** General, Ambient, Efectes i Interfície, amb un limitador al Master.
+- **Ajustos després de la prova de l'usuari:** el públic sonava massa fort i s'ha baixat. La càmera àmplia passa a ser la de per defecte.
 - **Vibració del comandament:** en xuts, entrades i gols de l'humà. Es pot desactivar.
 - **Acceptació:**
   - **No satura:** gravant un partit amb gols (`tools/audio_check.sh`), el pic és de −0,5 dBFS, el sostre del limitador, i cap mostra no queda retallada.
