@@ -49,6 +49,13 @@ static func variants(sound: StringName) -> Array[AudioStream]:
 	return out
 
 
+## Carrega tots els sons d'entrada (en obrir el joc). Si es carreguen el primer cop que
+## sonen, aquell pas de simulació s'allarga fins a 10 ms (els aplaudiments; fase 7).
+static func preload_all() -> void:
+	for sound: StringName in SOUNDS:
+		variants(sound)
+
+
 static func pick(sound: StringName) -> AudioStream:
 	var v := variants(sound)
 	return v[_rng.randi() % v.size()]

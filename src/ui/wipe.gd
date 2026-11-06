@@ -25,6 +25,13 @@ func play(team_idx: int) -> void:
 	visible = true
 
 
+## Escalfament de shaders (ShaderWarmup): la cortineta ja al mig, tapant la pantalla.
+func play_from_middle(team_idx: int) -> void:
+	play(team_idx)
+	_t = DURATION * 0.5
+	queue_redraw()
+
+
 func _process(delta: float) -> void:
 	if _t < 0.0:
 		return

@@ -206,6 +206,14 @@ func animate(p: Player, speed: float, delta: float) -> void:
 	_place_stick(p.swing, ik.influence)
 
 
+## Partit nou (es reaprofita el jugador): talla l'acció que feia.
+func reset() -> void:
+	tree.set(&"parameters/shot/request", AnimationNodeOneShot.ONE_SHOT_REQUEST_ABORT)
+	_action_left = 0.0
+	_last_stun = 0.0
+	ik.influence = 1.0
+
+
 ## Acció d'una sola vegada (celebrar, protestar, trontollar...). Si `hands_free`, les mans
 ## deixen el pal durant l'animació.
 func trigger(action: StringName, hands_free: bool = true) -> void:

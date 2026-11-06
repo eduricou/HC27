@@ -61,6 +61,7 @@ Criteris d'acceptació:
    - Es trien amb `--quality=<nom>`. Per a proves de rendiment, `--qset=clau=valor,...` en canvia valors concrets.
    - *Alta* fa servir MSAA 2x. Amb 4x, a 1440p de nit, feia 64–75 fps a l'Arc 130V; amb 2x en fa 72–87. El 4x queda per a *Ultra*.
    - La fase 5 els posarà al menú d'opcions, i la fase 7 els ajustarà.
+   - *Revisat a la fase 7 (decisió 0010):* els presets porten LOD i un nombre de focus de nit amb ombra, només el mapa d'ombres de la llum activa té la mida del preset, i el primer cop la qualitat es tria segons la gràfica.
 
 ## Mesures
 

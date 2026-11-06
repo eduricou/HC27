@@ -8,8 +8,8 @@ Regles, constants i toleràncies: docs/regles.md. Decisions: docs/decisions/.
 ## Estat
 - Fases 0 (preparació), 1 (simulació headless), 2 (primer jugable amb caixes grises),
   3 (estadi i gespa), 4 (jugadors amb esquelet i animacions), 5 (càmeres, repeticions,
-  HUD i menús) i 6 (àudio i sensacions, 6/11/2026) fetes. Següent: fase 7 (optimització
-  i qualitat), pla §9 i §10.
+  HUD i menús), 6 (àudio i sensacions) i 7 (optimització i qualitat, 6/11/2026) fetes.
+  Següent: fase 8 (exportació i distribució), pla §9 i §10.
 - La referència és la versió de 2.029 línies, no la «v4» del pla original (docs/decisions/0001).
 - La simulació de src/sim/ reprodueix la web pas a pas amb la mateixa llavor
   (docs/decisions/0002). Un partit triga ~10 s en un procés i ens hi quedem: el criteri és
@@ -50,6 +50,11 @@ Regles, constants i toleràncies: docs/regles.md. Decisions: docs/decisions/.
   `bash tools/audio_check.sh [segons] [llavor]` (grava el so d'un partit; obre finestra).
 - Fps a 1920×1080 sense VSync: `bash tools/bench.sh [segons] [qualitat] [hora] [res3d] [qset]`
   (obre una finestra). res3d=2560x1440 per estimar 1440p; qset=msaa=0,ssao=false per provar.
+- Rendiment d'un partit sencer, fotograma a fotograma (estrebades, CPU i GPU, pipelines
+  compilats, memòria; falla si al partit hi ha un fotograma de més de 50 ms):
+  `bash tools/perf.sh [qualitat] [hora] [qlen] [--fresh] [--vsync] [--gpu-profile]
+  [--no-warmup] [--d3d12] [--compat]` → build/perf/<qualitat>_<hora>.csv. Passa-ho després
+  de tocar el render, l'estadi, els jugadors o el flux de pantalles.
 - Exportació: `bash tools/export.sh` (sempre demana confirmació)
 - Referència web: `node tools/golden_headless.mjs [N] [qlen] [sortida]` (Edge headless)
 
@@ -105,10 +110,19 @@ Regles, constants i toleràncies: docs/regles.md. Decisions: docs/decisions/.
   MatchSound.SOUNDS o SILENT (hi ha una prova). UiSounds: sons dels menús. Rumble: vibració
   del comandament. Limitador al Master (AudioBuses). Sense pantalla no es reprodueix cap
   so (el mesclador no els alliberaria); per tancar el joc, quit_game() (calla i espera).
-- Presets de qualitat: src/game/quality.gd (opcions o `--quality=baixa|mitjana|alta|ultra`,
-  que hi mana; per defecte alta). Escala FSR 2.2 a les opcions. Arguments del joc:
-  `--time=tarda|nit` (per defecte, el de les opcions: nit, com la web). Decisions de la
-  fase 3: docs/decisions/0005 i 0006.
+- Rendiment (fase 7, docs/decisions/0010): presets a src/game/quality.gd (opcions o
+  `--quality=baixa|mitjana|alta|ultra`, que hi mana; el primer cop, segons la gràfica:
+  integrada → baixa, dedicada → alta). Porten LOD (mesh_lod_threshold) i quants focus de nit
+  fan ombra. Només el mapa d'ombres de la llum activa té la mida del preset. L'FSR 2.2 és una
+  opció a part (en una integrada a 1080p va més lent). Controlador: Vulkan (fixat a
+  project.godot; si no n'hi ha, D3D12). ShaderWarmup: en obrir el joc, sota una cortina,
+  dibuixa els angles del partit de tarda i de nit i tot el HUD perquè Godot no compili
+  pipelines en començar el partit; si afegeixes un angle de càmera o una pantalla nova,
+  afegeix-la a l'escalfament (ShaderWarmup.VIEWS, Hud.show_all). MatchView reaprofita els 22
+  jugadors entre partits (PlayerView.key_of) i SfxBank.preload_all() carrega els sons
+  d'entrada: muntar o carregar coses durant el joc fa estrebades.
+- Arguments del joc: `--time=tarda|nit` (per defecte, el de les opcions: nit, com la web).
+  Decisions de la fase 3: docs/decisions/0005 i 0006.
 - Escenaris de revisió: `views` (angles de tools/views.json; també segueixen jugadors amb
   "follow"; `--action=celebrate` fa fer l'acció a tothom) i `follow` (càmera que segueix un
   jugador mentre juga).

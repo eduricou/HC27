@@ -26,6 +26,7 @@ Port per a Windows 11 del joc web *Estic Hoquei Herba*: Iluro HC contra Club Pol
 | Recorregut automàtic (menú → partit → final) | `bash tools/smoke.sh` |
 | So: gravar un partit i comprovar que no satura | `bash tools/audio_check.sh` |
 | Fps (preset, tarda o nit, 1440p) | `bash tools/bench.sh 10 baixa nit` · `bash tools/bench.sh 10 alta nit 2560x1440` |
+| Rendiment d'un partit sencer (estrebades, memòria) | `bash tools/perf.sh alta nit` · `bash tools/perf.sh baixa tarda 20 --fresh` |
 | Exportar l'`.exe` i el zip | `bash tools/export.sh` |
 | Regenerar la referència web | `node tools/golden_headless.mjs` |
 
@@ -38,4 +39,5 @@ Port per a Windows 11 del joc web *Estic Hoquei Herba*: Iluro HC contra Club Pol
 - **Fase 4 (jugadors riggejats i animacions):** feta. Els jugadors són models amb esquelet (Quaternius, CC0) amb les equipacions de l'Iluro i del Polo, dorsals, pell, cabells i barbes variats, i porters amb casc i proteccions. Corren sense que els peus rellisquin, porten el pal amb les dues mans i la pala toca la pilota on toca la simulació; celebren els gols i protesten les faltes. Fa 174–263 fps amb *Baixa* a 1080p (`docs/decisions/0007`).
 - **Fase 5 (càmeres, repeticions, HUD i menús):** feta. Hi ha presentació amb vol de càmera, primer pla del gol, repetició a càmera lenta amb tres angles que es pot saltar, i una càmera darrere de la porteria als córners curts. El HUD és com el de la web, amb escuts, minimapa, indicador del jugador, rètols, cortineta, descans i final. El menú té les equipacions en 3D, i les opcions de pantalla, FSR, so i tecles es desen. Tot es fa servir amb teclat, ratolí o comandament (`docs/decisions/0008`).
 - **Fase 6 (àudio i sensacions):** feta. Sons reals CC0 (Kenney, BigSoundBank i Wikimedia Commons): cops de pal segons la força, la pilota a la gespa, el «bum» de la taula de fons, el pal, les proteccions del porter, el xiulet, i un públic petit que murmura, s'anima a prop de la porteria i crida i aplaudeix els gols. Sons als menús, limitador perquè no saturi, volums a les opcions i vibració del comandament en xuts, entrades i gols (`docs/decisions/0009`).
-- **Fase 7 (optimització i qualitat):** és la següent.
+- **Fase 7 (optimització i qualitat):** feta. Durant el partit no hi ha cap estrebada de més de 50 ms amb cap preset (el pitjor fotograma és de 25 ms), també el primer cop que s'obre el joc, gràcies a un escalfament de *shaders* sota una cortina «Carregant». A més, els jugadors es reaprofiten entre partits i els sons es carreguen d'entrada. Els presets porten LOD i ombres dels focus segons la qualitat, i el primer cop es tria la qualitat segons la gràfica. Amb *Baixa* fa 185 fps a 1080p en una integrada, i la memòria no passa d'1,34 GB (`docs/decisions/0010`).
+- **Fase 8 (exportació i distribució):** és la següent.

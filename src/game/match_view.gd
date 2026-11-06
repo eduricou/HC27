@@ -156,22 +156,38 @@ func _update_ring() -> void:
 
 ## Crea les vistes dels jugadors de cada partit nou (la pell, el cabell i el pentinat
 ## canvien d'un partit a l'altre).
+## Jugadors del partit nou. Si són els mateixos que els de l'anterior (sempre ho són: les
+## plantilles són fixes), es reaprofiten: muntar-ne 22 de nous i alliberar els vells feia
+## una estrebada de 10–20 ms en començar el partit i en tornar al menú (fase 7).
 func _bind(s: MatchState) -> void:
 	_bound = s.players[0]
 	var n := s.players.size()
-	for v in _views:
-		v.queue_free()
-	_views.clear()
-	for p in s.players:
-		var v := PlayerView.new()
-		v.setup(p, p.team.def)
-		add_child(v)
-		_views.append(v)
+	if _same_players(s):
+		for v in _views:
+			v.reset()
+	else:
+		for v in _views:
+			v.queue_free()
+		_views.clear()
+		for p in s.players:
+			var v := PlayerView.new()
+			v.setup(p, p.team.def)
+			add_child(v)
+			_views.append(v)
 	_prev_pos.resize(n)
 	_cur_pos.resize(n)
 	_prev_yaw.resize(n)
 	_cur_yaw.resize(n)
 	_snap_next = true
+
+
+func _same_players(s: MatchState) -> bool:
+	if _views.size() != s.players.size():
+		return false
+	for i in _views.size():
+		if _views[i].key != PlayerView.key_of(s.players[i]):
+			return false
+	return true
 
 
 ## Accions dels jugadors a partir dels esdeveniments d'un pas de simulació: el golejador

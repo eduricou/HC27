@@ -79,6 +79,7 @@ var _steps_this_frame := 0
 func _ready() -> void:
 	# Després del MatchRunner, que fa el pas de simulació.
 	process_physics_priority = 10
+	SfxBank.preload_all()
 	for i in VOICES:
 		var p := AudioStreamPlayer3D.new()
 		p.bus = &"Efectes"

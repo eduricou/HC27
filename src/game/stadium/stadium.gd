@@ -62,6 +62,10 @@ const NIGHT := {
 ## Focus: obertura (graus) i abast. Cada torre il·lumina la meitat de l'altra banda.
 const SPOT_ANGLE := 62.0
 const SPOT_RANGE := 115.0
+## Ordre en què els focus fan ombra quan el preset en limita el nombre (Quality,
+## spot_shadows): primer les dues torres del mig del passeig, que il·luminen el centre i fan
+## les ombres cap a la càmera TV.
+const SPOT_SHADOW_ORDER: Array[int] = [1, 2, 0, 3, 4, 5]
 ## Capa de render de les coses fixes. Els focus de nit no en fan ombra (shadow_caster_mask):
 ## amb un con tan ample l'ombra surt a trossos, i així només la fan jugadors i porteries.
 const STATIC_LAYER := 2
@@ -127,7 +131,9 @@ func update_frame() -> void:
 
 
 ## Tarda (sol) o nit (focus). ref: OPTS.time, uNight
-func set_night(on: bool) -> void:
+## Amb resize_shadows = false no es toca la mida dels mapes d'ombres (escalfament de
+## shaders: així no hi ha mai els dos mapes grans alhora).
+func set_night(on: bool, resize_shadows := true) -> void:
 	night = on
 	RenderingServer.global_shader_parameter_set(&"night", 1.0 if on else 0.0)
 	if not _built:
@@ -146,6 +152,8 @@ func set_night(on: bool) -> void:
 	_lamp_mat.emission_energy_multiplier = NIGHT["lamp"] if on else 0.0
 	_street_lamp_mat.emission_energy_multiplier = NIGHT["street_lamp"] if on else 0.0
 	_sky_mat.set_shader_parameter("sun_dir", L.sun_view())
+	if resize_shadows and not quality.is_empty():
+		Quality.apply_shadow_atlases(quality, get_viewport(), on)
 
 
 func apply_quality(q: Dictionary) -> void:
@@ -158,11 +166,12 @@ func apply_quality(q: Dictionary) -> void:
 		else DirectionalLight3D.SHADOW_PARALLEL_4_SPLITS
 	)
 	_sun.directional_shadow_max_distance = q["sun_dist"]
-	for sp in _spots:
-		sp.shadow_enabled = q["spot_shadows"]
+	for i in _spots.size():
+		_spots[i].shadow_enabled = SPOT_SHADOW_ORDER.find(i) < int(q["spot_shadows"])
 	_env.ssao_enabled = q["ssao"]
 	_env.ssil_enabled = q["ssil"]
 	_env.glow_enabled = q["glow"]
+	Quality.apply_shadow_atlases(q, get_viewport(), night)
 
 
 func _build_lighting() -> void:

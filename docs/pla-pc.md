@@ -638,6 +638,27 @@ Les durades són orientatives i suposen una sola persona a temps parcial.
 - No hi ha estrebades de més de 50 ms durant el partit.
 - La memòria es manté per sota d'1,5 GB.
 
+**Fet (6/11/2026).**
+- **Perfilar:** `tools/perf.sh` juga un partit sencer des del menú i mesura cada fotograma (simulació, scripts, CPU del render, GPU, *pipelines* compilats i memòria). Substitueix el perfilador de l'editor, que no es pot automatitzar.
+- **Estrebades arreglades:**
+  - en començar el partit, de 147 a 15–24 ms amb *Ultra*: escalfament de *shaders* i jugadors reaprofitats entre partits;
+  - en tornar al menú, de 64 a 15 ms;
+  - la primera vegada que sona cada so, fins a 10 ms: ara es carreguen en obrir el joc.
+- **Escalfament de *shaders*:** en obrir el joc, sota una cortina «Carregant», la càmera passa pels angles del partit, de tarda i de nit, amb tot el HUD.
+- **Presets:**
+  - hi ha LOD (de 4 px a *Baixa* a 0,5 px a *Ultra*) i un nombre de focus de nit que fan ombra (2, 4, 6 i 6);
+  - només el mapa d'ombres de la llum que es fa servir té la mida del preset;
+  - el primer cop, la qualitat es tria segons la gràfica.
+  - L'FSR 2.2 no és a cap preset, perquè en una integrada a 1080p fa anar el joc més lent. Continua a les opcions.
+- **Controlador:** Vulkan, fixat. Amb Direct3D 12 anava un 40 % més lent i tenia estrebades del controlador. El renderitzador Compatibility (OpenGL) funciona.
+- **Acceptació** (Intel Arc 130V integrada, 1080p, partit sencer):
+  - **60 fps amb *Baixa*:** en fa 185, i el 1 % més lent no baixa de 154.
+  - **144 fps a 1440p amb *Alta* en una GPU mitjana:** aquí no es pot mesurar. *Alta* a 1440p fa 76–104 fps en aquesta integrada, i l'estimació per a una GPU mitjana és de 190–310.
+  - **Cap estrebada de més de 50 ms:** el pitjor fotograma del partit és de 25 ms, amb qualsevol preset, de tarda i de nit, també el primer cop que s'obre el joc.
+  - **Memòria:** el pic és d'1,34 GB, amb *Ultra*.
+- **Pendent:** provar-ho en altres PC (no n'hi havia cap més); la gespa de tarda surt més fosca amb Compatibility.
+- Decisions: `docs/decisions/0010`.
+
 ### Fase 8: exportació i distribució (2–3 dies)
 
 **Feina:**

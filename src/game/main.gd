@@ -6,7 +6,9 @@
 ##   goal (fins al primer gol, per a la càmera del gol i la repetició; --after=<segons>
 ##   avança encara més) · audio (partit en directe, per mesurar el so) · smoke ·
 ##   smoke_human · bench · views · follow (càmera que segueix un jugador de
-##   tools/views.json mentre juga: --cams=jugador_davant)
+##   tools/views.json mentre juga: --cams=jugador_davant) · perf (menú, partit sencer i
+##   tornada al menú mesurant cada fotograma: tools/perf.sh; --warmup=0, sense l'escalfament
+##   de shaders)
 ## Els escenaris no llegeixen ni desen les opcions de l'usuari (user://opcions.cfg).
 ## Altres arguments: --seed=<n> (llavor del partit), --time=tarda|nit (per defecte, nit),
 ## --quality=baixa|mitjana|alta|ultra i, per provar, --qset=clau=valor,... (canvia valors
@@ -27,6 +29,13 @@ var settings := GameSettings.new()
 var options: OptionsScreen
 var sound: MatchSound
 var rumble: Rumble
+var probe: PerfProbe
+var warmup: ShaderWarmup
+## L'escalfament de shaders només es fa jugant (i a l'escenari perf): a les captures
+## taparia la pantalla.
+var _warm_enabled := false
+## La qualitat gràfica ha canviat des de l'últim escalfament.
+var _graphics_dirty := false
 var _quitting := false
 var _opts := {"side": 0, "diff": "normal", "qlen": 150.0}
 var _rng := RandomNumberGenerator.new()
@@ -52,8 +61,9 @@ func _ready() -> void:
 	scenario = _arg("scenario")
 	# Les opcions desades només valen per jugar: els escenaris de proves i captures fan
 	# servir les de per defecte (i no les desen).
-	if scenario == "":
-		settings.load_file()
+	if scenario == "" and not settings.load_file():
+		# Primer cop que s'obre el joc: la qualitat, segons la gràfica.
+		settings.quality = Quality.for_adapter_type(RenderingServer.get_video_adapter_type())
 	settings.apply_input()
 	settings.apply_audio()
 	if scenario == "":
@@ -80,7 +90,11 @@ func _ready() -> void:
 	options.persist = scenario == ""
 	add_child(options)
 	options.closed.connect(_options_closed)
-	options.graphics_changed.connect(_apply_graphics)
+	options.graphics_changed.connect(_on_graphics_changed)
+	warmup = ShaderWarmup.new()
+	warmup.name = "Escalfament"
+	add_child(warmup)
+	_warm_enabled = scenario == "" or (scenario == "perf" and _arg("warmup") != "0")
 	add_child(UiSounds.new())
 	sound = MatchSound.new()
 	sound.name = "So"
@@ -120,8 +134,21 @@ func _ready() -> void:
 func _apply_graphics() -> void:
 	var q := settings.graphics_preset(_arg("quality"))
 	Quality.override(q, _arg("qset"))
+	Quality.adapt_to_renderer(q, RenderingServer.get_current_rendering_method())
 	Quality.apply_viewport(q, get_viewport())
 	stadium.apply_quality(q)
+
+
+func _on_graphics_changed() -> void:
+	_apply_graphics()
+	_graphics_dirty = true
+
+
+## Escalfament de shaders (ShaderWarmup), només al menú.
+func _warm() -> void:
+	if _warm_enabled and mode == &"menu":
+		_graphics_dirty = false
+		warmup.run(stadium, cam, hud)
 
 
 ## Càmera del córner curt i vibració (menú d'opcions).
@@ -148,6 +175,8 @@ func _open_options() -> void:
 func _options_closed() -> void:
 	if mode == &"menu":
 		menu.refocus()
+		if _graphics_dirty:
+			_warm()
 	elif hud.pause_screen.visible:
 		hud.pause_screen.refocus()
 
@@ -190,6 +219,9 @@ func go_menu() -> void:
 	view.sync_now()
 	cam.snap()
 	menu.open()
+	# Si la qualitat s'ha canviat durant el partit (pausa › opcions), s'escalfa ara.
+	if _graphics_dirty:
+		_warm()
 
 
 ## Partit nou. side: 0 Iluro, 1 Polo, −1 CPU contra CPU. ref: startMatch()
@@ -271,6 +303,7 @@ func _start_scenario() -> void:
 	match scenario:
 		"", "menu":
 			go_menu()
+			_warm()
 			if _arg("controls") != "":
 				# Taula de controls oberta (captures).
 				var b: Button = menu.get("_help_btn")
@@ -288,8 +321,7 @@ func _start_scenario() -> void:
 			if scenario == "pause":
 				toggle_pause()
 			if scenario == "bench":
-				DisplayServer.window_set_vsync_mode(DisplayServer.VSYNC_DISABLED)
-				Engine.max_fps = 0
+				_unlock_fps()
 		"human":
 			runner.autopilot = Autopilot.new(3)
 			_quick_match(0, 12.0)
@@ -341,6 +373,17 @@ func _start_scenario() -> void:
 			_quick_match(-1, 8.0)
 			hud.visible = false
 			_shots = _view_list()
+		"perf":
+			go_menu()
+			probe = PerfProbe.new()
+			probe.name = "Mesura"
+			probe.runner = runner
+			probe.cam = cam
+			add_child(probe)
+			probe.label = "menú"
+			_warm()
+			if _arg("vsync") != "1":
+				_unlock_fps()
 		"smoke":
 			start_match(-1, "normal", 40.0)
 		"smoke_human":
@@ -349,6 +392,12 @@ func _start_scenario() -> void:
 		_:
 			push_error("Escenari desconegut: %s" % scenario)
 			go_menu()
+
+
+## Mesures de rendiment: sense VSync ni límit de fps.
+func _unlock_fps() -> void:
+	DisplayServer.window_set_vsync_mode(DisplayServer.VSYNC_DISABLED)
+	Engine.max_fps = 0
 
 
 ## Partit sense presentació, avançat `seconds` segons.
@@ -371,6 +420,8 @@ func _process(delta: float) -> void:
 		_smoke_step(delta)
 	elif scenario == "bench":
 		_bench_step(delta)
+	elif scenario == "perf":
+		_perf_step(delta)
 
 
 ## Recorregut complet sense ningú: partit → descansos → final → menú. Ho fa tools/smoke.sh.
@@ -429,7 +480,10 @@ func _bench_step(delta: float) -> void:
 		var scale := get_viewport().scaling_3d_scale
 		print(
 			(
-				"BENCH: %.0f fps de mitjana (%.2f ms per fotograma) · %dx%d (3D a %dx%d) · %s · %s · %s"
+				(
+					"BENCH: %.0f fps de mitjana (%.2f ms per fotograma) · %dx%d (3D a %dx%d) · %s · "
+					+ "%s · %s · %d k triangles"
+				)
 				% [
 					fps,
 					1000.0 / fps,
@@ -440,10 +494,49 @@ func _bench_step(delta: float) -> void:
 					stadium.quality.get("name", "?"),
 					"nit" if stadium.night else "tarda",
 					RenderingServer.get_video_adapter_name(),
+					Performance.get_monitor(Performance.RENDER_TOTAL_PRIMITIVES_IN_FRAME) / 1000,
 				]
 			)
 		)
 		quit_game()
+
+
+## Recorregut de rendiment (tools/perf.sh): 4 s de menú, un partit CPU contra CPU amb la
+## presentació, les repeticions, els descansos i el final (quarts de --qlen segons, 40 per
+## defecte) i la tornada al menú. Les estrebades només compten durant el partit: els dos
+## primers fotogrames, mentre es munta el partit, són la part «inici».
+func _perf_step(delta: float) -> void:
+	_t += delta
+	match _phase:
+		0:
+			if _t > 4.0:
+				probe.label = "inici"
+				start_match(-1, "normal", float(_arg("qlen")) if _arg("qlen") != "" else 40.0)
+				_phase = 1
+				_frames = 0
+		1:
+			_frames += 1
+			if _frames == 2:
+				probe.label = "partit"
+			if runner.sim.s.state == &"full":
+				_phase = 2
+				_t = 0.0
+		2:
+			if _t > 3.0:
+				probe.label = "menú final"
+				go_menu()
+				_phase = 3
+				_t = 0.0
+		3:
+			if _t > 3.0:
+				_phase = 4
+				var csv := (
+					"res://build/perf/%s_%s.csv"
+					% [stadium.quality.get("name", "?"), "nit" if stadium.night else "tarda"]
+				)
+				var n := probe.report(csv)
+				print("PERF OK" if n == 0 else "PERF FALLA: %d estrebades de més de 50 ms" % n)
+				quit_game(0 if n == 0 else 1)
 
 
 ## Combinacions [angle, nit] de l'escenari views: --cams=a,b (per defecte, totes les de

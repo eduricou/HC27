@@ -142,6 +142,18 @@ func set_match_visible(on: bool) -> void:
 	_set_bars(false, true)
 
 
+## Escalfament de shaders (ShaderWarmup): tot el HUD alhora, amb els rètols, les pantalles,
+## les franges i la cortineta, perquè es dibuixin una vegada. Després, set_match_visible().
+func show_all() -> void:
+	_root.visible = true
+	_banner.visible = true
+	_intro.visible = true
+	pause_screen.visible = true
+	break_screen.visible = true
+	_set_bars(true, true)
+	_wipe.play_from_middle(0)
+
+
 func _process(_delta: float) -> void:
 	if not _root.visible or runner == null or runner.sim == null:
 		return
