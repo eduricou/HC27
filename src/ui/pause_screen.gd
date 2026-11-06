@@ -71,4 +71,5 @@ func _unhandled_input(event: InputEvent) -> void:
 	if event.is_action(&"pause"):
 		return
 	get_viewport().set_input_as_handled()
+	UiSounds.back()
 	resume_requested.emit()

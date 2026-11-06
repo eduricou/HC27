@@ -145,6 +145,7 @@ static func button(text: String, cb: Callable, primary := false) -> Button:
 	b.text = text.to_upper() if primary else text
 	if primary:
 		b.theme_type_variation = &"PrimaryButton"
+	b.pressed.connect(UiSounds.press)
 	b.pressed.connect(cb)
 	return b
 
@@ -164,6 +165,7 @@ static func segment(options: Array, selected: Variant, cb: Callable) -> HBoxCont
 		b.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		b.set_pressed_no_signal(same(o[0], selected))
 		var v: Variant = o[0]
+		b.pressed.connect(UiSounds.press)
 		b.pressed.connect(func() -> void: cb.call(v))
 		row.add_child(b)
 	return row

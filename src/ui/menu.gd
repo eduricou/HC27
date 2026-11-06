@@ -13,6 +13,7 @@ signal play_requested(side: int, diff: String, qlen: float)
 signal night_changed(night: bool)
 signal cam_changed(cam: String)
 signal options_requested
+signal quit_requested
 signal changed
 
 const SIDES := [[0, "Iluro HC"], [1, "Club Polo"], [-1, "Només mirar"]]
@@ -236,7 +237,7 @@ func _options() -> Control:
 	_help_btn = UiKit.button(tr("Controls"), _toggle_help)
 	_help_btn.toggle_mode = true
 	row.add_child(_help_btn)
-	row.add_child(UiKit.button(tr("Surt"), get_tree().quit))
+	row.add_child(UiKit.button(tr("Surt"), quit_requested.emit))
 	for b in row.get_children():
 		(b as Control).size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		(b as Control).custom_minimum_size.y = 50

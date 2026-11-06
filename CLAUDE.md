@@ -7,8 +7,9 @@ Regles, constants i toleràncies: docs/regles.md. Decisions: docs/decisions/.
 
 ## Estat
 - Fases 0 (preparació), 1 (simulació headless), 2 (primer jugable amb caixes grises),
-  3 (estadi i gespa), 4 (jugadors amb esquelet i animacions) i 5 (càmeres, repeticions,
-  HUD i menús, 6/11/2026) fetes. Següent: fase 6 (àudio i sensacions), pla §9 i §10.
+  3 (estadi i gespa), 4 (jugadors amb esquelet i animacions), 5 (càmeres, repeticions,
+  HUD i menús) i 6 (àudio i sensacions, 6/11/2026) fetes. Següent: fase 7 (optimització
+  i qualitat), pla §9 i §10.
 - La referència és la versió de 2.029 línies, no la «v4» del pla original (docs/decisions/0001).
 - La simulació de src/sim/ reprodueix la web pas a pas amb la mateixa llavor
   (docs/decisions/0002). Un partit triga ~10 s en un procés i ens hi quedem: el criteri és
@@ -44,6 +45,9 @@ Regles, constants i toleràncies: docs/regles.md. Decisions: docs/decisions/.
   Quaternius): `"$GODOT" --headless --path . -s res://tools/build_player_anims.gd`.
 - Recorregut complet sense pantalla (partit → descansos → final → menú; falla si hi ha errors
   o avisos a la consola): `bash tools/smoke.sh`. Passa-ho després de tocar src/game o src/ui.
+- Sons (assets/audio/, CC0): `"$GODOT" --headless --path . -s res://tools/prepare_audio.gd --
+  <carpeta>` els prepara a partir dels paquets baixats (vegeu el fitxer). Saturació:
+  `bash tools/audio_check.sh [segons] [llavor]` (grava el so d'un partit; obre finestra).
 - Fps a 1920×1080 sense VSync: `bash tools/bench.sh [segons] [qualitat] [hora] [res3d] [qset]`
   (obre una finestra). res3d=2560x1440 per estimar 1440p; qset=msaa=0,ssao=false per provar.
 - Exportació: `bash tools/export.sh` (sempre demana confirmació)
@@ -95,6 +99,12 @@ Regles, constants i toleràncies: docs/regles.md. Decisions: docs/decisions/.
   i IK de cames i braços. La pala del pal és sempre al punt de control de la simulació
   (stickPt/stickWorld) i les mans hi van amb IK. Les accions (celebrar, protestar, estirada,
   entrada) les disparen els esdeveniments a MatchView.on_events.
+- So (src/game/audio/, docs/decisions/0009): MatchSound escolta els esdeveniments de cada
+  pas (com MatchView) i fa sonar SfxBank en 3D al lloc on passen; el públic (petit) és un
+  murmuri en dues capes amb reaccions. Cada tipus d'esdeveniment de src/sim/ ha de ser a
+  MatchSound.SOUNDS o SILENT (hi ha una prova). UiSounds: sons dels menús. Rumble: vibració
+  del comandament. Limitador al Master (AudioBuses). Sense pantalla no es reprodueix cap
+  so (el mesclador no els alliberaria); per tancar el joc, quit_game() (calla i espera).
 - Presets de qualitat: src/game/quality.gd (opcions o `--quality=baixa|mitjana|alta|ultra`,
   que hi mana; per defecte alta). Escala FSR 2.2 a les opcions. Arguments del joc:
   `--time=tarda|nit` (per defecte, el de les opcions: nit, com la web). Decisions de la

@@ -1,9 +1,11 @@
 ## Busos d'àudio del joc: Master (general) i, per sota, Ambient (públic), Efectes (pal,
-## pilota, xiulet) i Interfície. Es creen en temps d'execució perquè el menú d'opcions en
-## pugui canviar el volum ara; la fase 6 hi posarà els sons.
+## pilota, xiulet) i Interfície. Es creen en temps d'execució. El Master porta un limitador
+## a −0,5 dB: per molts sons que coincideixin (gol, xiulet, crits), no satura mai.
 class_name AudioBuses
 extends RefCounted
 
+## Sostre del limitador del Master (dBFS).
+const CEILING_DB := -0.5
 const BUSES: Array[StringName] = [&"Master", &"Ambient", &"Efectes", &"Interficie"]
 const NAMES := {
 	&"Master": "General",
@@ -21,6 +23,13 @@ static func ensure() -> void:
 		var i := AudioServer.bus_count - 1
 		AudioServer.set_bus_name(i, bus)
 		AudioServer.set_bus_send(i, &"Master")
+	var master := AudioServer.get_bus_index(&"Master")
+	for k in AudioServer.get_bus_effect_count(master):
+		if AudioServer.get_bus_effect(master, k) is AudioEffectHardLimiter:
+			return
+	var lim := AudioEffectHardLimiter.new()
+	lim.ceiling_db = CEILING_DB
+	AudioServer.add_bus_effect(master, lim)
 
 
 ## Volum lineal 0–1 (0 silencia el bus).

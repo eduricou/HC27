@@ -4,11 +4,13 @@
 ##   menu (--controls=1: amb la taula de controls) · options (--tab=0|1|2: pantalla, so,
 ##   tecles) · intro · match · human · pc · pause · break · full ·
 ##   goal (fins al primer gol, per a la càmera del gol i la repetició; --after=<segons>
-##   avança encara més) · smoke · smoke_human · bench · views · follow (càmera que segueix
-##   un jugador de tools/views.json mentre juga: --cams=jugador_davant)
+##   avança encara més) · audio (partit en directe, per mesurar el so) · smoke ·
+##   smoke_human · bench · views · follow (càmera que segueix un jugador de
+##   tools/views.json mentre juga: --cams=jugador_davant)
 ## Els escenaris no llegeixen ni desen les opcions de l'usuari (user://opcions.cfg).
-## Altres arguments: --time=tarda|nit (per defecte, nit), --quality=baixa|mitjana|alta|ultra
-## i, per provar, --qset=clau=valor,... (canvia valors del preset; vegeu Quality.override).
+## Altres arguments: --seed=<n> (llavor del partit), --time=tarda|nit (per defecte, nit),
+## --quality=baixa|mitjana|alta|ultra i, per provar, --qset=clau=valor,... (canvia valors
+## del preset; vegeu Quality.override).
 ## ref: línies 1940–2029 (startMatch(), backToMenu(), togglePause(), start())
 extends Node
 
@@ -23,6 +25,9 @@ var mode: StringName = &"menu"
 var scenario := ""
 var settings := GameSettings.new()
 var options: OptionsScreen
+var sound: MatchSound
+var rumble: Rumble
+var _quitting := false
 var _opts := {"side": 0, "diff": "normal", "qlen": 150.0}
 var _rng := RandomNumberGenerator.new()
 var _t := 0.0
@@ -42,6 +47,8 @@ var _settle := 0
 
 func _ready() -> void:
 	_rng.randomize()
+	# La creu de la finestra passa per quit_game().
+	get_tree().auto_accept_quit = false
 	scenario = _arg("scenario")
 	# Les opcions desades només valen per jugar: els escenaris de proves i captures fan
 	# servir les de per defecte (i no les desen).
@@ -66,6 +73,7 @@ func _ready() -> void:
 	menu.cam_changed.connect(_on_cam_changed)
 	menu.changed.connect(_save_settings)
 	menu.options_requested.connect(_open_options)
+	menu.quit_requested.connect(quit_game)
 	options = OptionsScreen.new()
 	options.name = "Opcions"
 	options.settings = settings
@@ -73,9 +81,21 @@ func _ready() -> void:
 	add_child(options)
 	options.closed.connect(_options_closed)
 	options.graphics_changed.connect(_apply_graphics)
-	options.game_changed.connect(func() -> void: cam.pc_enabled = settings.pc_cam)
+	add_child(UiSounds.new())
+	sound = MatchSound.new()
+	sound.name = "So"
+	sound.runner = runner
+	add_child(sound)
+	rumble = Rumble.new()
+	rumble.name = "Vibracio"
+	rumble.runner = runner
+	rumble.enabled = settings.vibration
+	add_child(rumble)
+	options.game_changed.connect(_on_game_options)
 	runner.stepped.connect(stadium.on_step)
 	runner.stepped.connect(view.on_events)
+	runner.stepped.connect(sound.on_events)
+	runner.stepped.connect(rumble.on_events)
 	view.runner = runner
 	cam.runner = runner
 	cam.view = view
@@ -104,6 +124,12 @@ func _apply_graphics() -> void:
 	stadium.apply_quality(q)
 
 
+## Càmera del córner curt i vibració (menú d'opcions).
+func _on_game_options() -> void:
+	cam.pc_enabled = settings.pc_cam
+	rumble.enabled = settings.vibration
+
+
 func _save_settings() -> void:
 	if scenario == "":
 		settings.save_file()
@@ -126,12 +152,38 @@ func _options_closed() -> void:
 		hud.pause_screen.refocus()
 
 
+## Tanca el joc. Primer fa callar el so i espera un moment: si un bucle encara sona quan
+## es tanca el servidor d'àudio, Godot no l'allibera (i avisa de fuites a la consola).
+func quit_game(code: int = 0) -> void:
+	if _quitting:
+		return
+	_quitting = true
+	set_process(false)
+	runner.paused = true
+	sound.silence()
+	await get_tree().create_timer(0.15).timeout
+	get_tree().quit(code)
+
+
+func _notification(what: int) -> void:
+	if what == NOTIFICATION_WM_CLOSE_REQUEST:
+		quit_game()
+	elif what == NOTIFICATION_APPLICATION_FOCUS_OUT and scenario == "":
+		# Si la finestra perd el focus durant el joc, es posa en pausa (com la web quan la
+		# pestanya s'amaga). No als escenaris, que corren sense ningú davant.
+		if mode == &"match" and runner.sim and not runner.paused:
+			toggle_pause()
+
+
 ## Torna al menú amb un partit de demostració de fons. ref: backToMenu()
 func go_menu() -> void:
 	mode = &"menu"
 	stadium.fx.reset()
 	runner.start(_rng.randi(), MatchState.DEMO_QLEN, -1, "normal", &"demo")
 	runner.input_enabled = false
+	# El partit de demostració del menú sona més fluix.
+	sound.level_db = -10.0
+	sound.start_crowd()
 	hud.set_match_visible(false)
 	hud.show_pause(false)
 	hud.hide_break()
@@ -145,7 +197,7 @@ func start_match(side: int, diff: String, qlen: float) -> void:
 	mode = &"match"
 	_save_settings()
 	_opts = {"side": side, "diff": diff, "qlen": qlen}
-	var seed_value := _rng.randi()
+	var seed_value := _rng.randi() if _arg("seed") == "" else int(_arg("seed"))
 	print(
 		"Partit nou · llavor %d · costat %d · %s · quarts de %d s" % [seed_value, side, diff, qlen]
 	)
@@ -153,6 +205,8 @@ func start_match(side: int, diff: String, qlen: float) -> void:
 	runner.start(seed_value, qlen, side, diff, &"match")
 	runner.input_enabled = true
 	runner.input_grace = 20
+	sound.level_db = 0.0
+	sound.start_crowd()
 	menu.close()
 	hud.night = stadium.night
 	hud.set_match_visible(true)
@@ -188,15 +242,6 @@ func _unhandled_input(event: InputEvent) -> void:
 	if event.is_action_pressed(&"pause") and not event.is_echo():
 		toggle_pause()
 		get_viewport().set_input_as_handled()
-
-
-## Si la finestra perd el focus durant el joc, es posa en pausa (com la web quan la
-## pestanya s'amaga). No als escenaris, que corren sense ningú davant.
-func _notification(what: int) -> void:
-	if what != NOTIFICATION_APPLICATION_FOCUS_OUT or scenario != "":
-		return
-	if mode == &"match" and runner.sim and not runner.paused:
-		toggle_pause()
 
 
 func _on_break() -> void:
@@ -276,6 +321,9 @@ func _start_scenario() -> void:
 				runner.fast_forward(roundi(float(_arg("after")) * 60.0))
 			view.sync_now()
 			cam.snap()
+		"audio":
+			# Partit en directe des del primer segon (tools/audio_check.sh, amb --seed).
+			_quick_match(-1, 0.0)
 		"views":
 			_quick_match(-1, 25.0)
 			runner.paused = true
@@ -331,7 +379,7 @@ func _smoke_step(delta: float) -> void:
 	var s := runner.sim.s if runner.sim else null
 	if _t > SMOKE_LIMIT:
 		print("SMOKE FALLA: temps esgotat (estat %s)" % (s.state if s else &"cap"))
-		get_tree().quit(1)
+		quit_game(1)
 		return
 	if _phase == 0 and s and s.state == &"break" and s.human_idx >= 0:
 		# Amb humà, el descans espera el botó: el premem al cap d'un segon.
@@ -360,7 +408,7 @@ func _smoke_step(delta: float) -> void:
 		var ok := mode == &"menu" and runner.sim.s.mode == &"demo"
 		print("SMOKE: esdeveniments ", _events)
 		print("SMOKE OK" if ok else "SMOKE FALLA: no ha tornat al menú")
-		get_tree().quit(0 if ok else 1)
+		quit_game(0 if ok else 1)
 
 
 ## Mesura de fps: 2 s d'escalfament i després `--seconds` segons (10 per defecte).
@@ -395,7 +443,7 @@ func _bench_step(delta: float) -> void:
 				]
 			)
 		)
-		get_tree().quit()
+		quit_game()
 
 
 ## Combinacions [angle, nit] de l'escenari views: --cams=a,b (per defecte, totes les de
@@ -420,7 +468,7 @@ func _view_list() -> Array:
 ## Captures dels angles fixos, una cada VIEWS_SETTLE fotogrames. Ho fa tools/shot_views.sh.
 func _views_step() -> void:
 	if _shots.is_empty():
-		get_tree().quit()
+		quit_game()
 		return
 	var shot: Array = _shots[0]
 	if _frames == 0:

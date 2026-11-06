@@ -1,7 +1,7 @@
 ## Menú d'opcions, des del menú principal o des de la pausa. Tres pestanyes:
 ## - Pantalla: mode de finestra, resolució, VSync, límit de fps, qualitat, escala FSR 2.2 i
 ##   la càmera dels córners curts;
-## - So: volums dels busos (AudioBuses);
+## - So: volums dels busos (AudioBuses) i vibració del comandament;
 ## - Tecles: fins a tres tecles i dos botons del comandament per acció (InputActions).
 ## Cada canvi s'aplica i es desa a l'acte (GameSettings). Esc o B tornen enrere.
 class_name OptionsScreen
@@ -10,7 +10,7 @@ extends CanvasLayer
 signal closed
 ## La qualitat o l'escala FSR han canviat (main.gd les aplica a l'estadi i al viewport).
 signal graphics_changed
-## Opcions del joc (càmera del córner curt).
+## Opcions del joc (càmera del córner curt, vibració).
 signal game_changed
 
 const TABS := [[0, "Pantalla"], [1, "So"], [2, "Tecles"]]
@@ -20,6 +20,7 @@ const QUALITIES := [
 	["baixa", "Baixa"], ["mitjana", "Mitjana"], ["alta", "Alta"], ["ultra", "Ultra"]
 ]
 const PC_CAMS := [[true, "Darrere de la porteria"], [false, "Televisió"]]
+const YES_NO := [[true, "Sí"], [false, "No"]]
 
 var settings: GameSettings
 ## Fals a les proves: no escriu a user://.
@@ -228,7 +229,24 @@ func _sound_page() -> Control:
 		v.custom_minimum_size.x = 80
 		grid.add_child(v)
 		_vol_labels[bus] = v
-	return grid
+	var box := VBoxContainer.new()
+	box.add_theme_constant_override("separation", 34)
+	box.add_child(grid)
+	var vib := GridContainer.new()
+	vib.columns = 2
+	vib.add_theme_constant_override("h_separation", 26)
+	_segs["vibration"] = _row(vib, tr("Vibració del comandament"), _tr_opts(YES_NO), _set_vibration)
+	(_segs["vibration"] as Control).custom_minimum_size.x = 560
+	box.add_child(vib)
+	return box
+
+
+func _set_vibration(v: Variant) -> void:
+	settings.vibration = bool(v)
+	game_changed.emit()
+	_changed()
+	if settings.vibration:
+		Rumble.pulse(0.4, 0.6, 0.2)
 
 
 func _set_volume(v: float, bus: StringName) -> void:
@@ -314,6 +332,7 @@ func _input(event: InputEvent) -> void:
 		return
 	if event.is_action_pressed(&"ui_cancel") and not event.is_echo():
 		get_viewport().set_input_as_handled()
+		UiSounds.back()
 		close()
 
 
@@ -402,6 +421,7 @@ func _refresh() -> void:
 	for bus: StringName in _sliders:
 		(_sliders[bus] as HSlider).set_value_no_signal(roundf(settings.volumes[bus] * 100.0))
 		(_vol_labels[bus] as Label).text = "%d %%" % roundi(settings.volumes[bus] * 100.0)
+	_select("vibration", settings.vibration)
 	_refresh_keys()
 
 

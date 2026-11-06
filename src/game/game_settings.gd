@@ -52,6 +52,8 @@ var night := true
 var cam := "tv"
 ## Càmera darrere de la porteria als córners curts.
 var pc_cam := true
+## Vibració del comandament en xuts, entrades i gols.
+var vibration := true
 
 
 func load_file(path: String = PATH) -> bool:
@@ -81,6 +83,7 @@ func load_file(path: String = PATH) -> bool:
 	night = bool(cf.get_value("partit", "nit", night))
 	cam = "ampla" if str(cf.get_value("partit", "camera", cam)) == "ampla" else "tv"
 	pc_cam = bool(cf.get_value("joc", "camera_corner", pc_cam))
+	vibration = bool(cf.get_value("joc", "vibracio", vibration))
 	return true
 
 
@@ -102,6 +105,7 @@ func save_file(path: String = PATH) -> Error:
 	cf.set_value("partit", "nit", night)
 	cf.set_value("partit", "camera", cam)
 	cf.set_value("joc", "camera_corner", pc_cam)
+	cf.set_value("joc", "vibracio", vibration)
 	return cf.save(path)
 
 
