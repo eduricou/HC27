@@ -98,8 +98,8 @@ func snap() -> void:
 	_prev_ball = _cur_ball
 
 
-func _process(_delta: float) -> void:
-	_apply(Engine.get_physics_interpolation_fraction())
+func _process(delta: float) -> void:
+	_apply(Engine.get_physics_interpolation_fraction(), delta)
 
 
 ## Captura l'estat i el mostra tot seguit, sense interpolar (partit nou, captures).
@@ -109,15 +109,21 @@ func sync_now() -> void:
 	_apply(1.0)
 
 
-func _apply(f: float) -> void:
+func _apply(f: float, delta: float = 0.0) -> void:
 	if _views.is_empty():
 		return
+	var s := runner.sim.s if runner and runner.sim else null
 	for i in _views.size():
 		var a := _prev_pos[i]
 		var b := _cur_pos[i]
 		var v := _views[i]
-		v.position = b if a.distance_to(b) > SNAP_PLAYER else a.lerp(b, f)
+		var jump := a.distance_to(b) > SNAP_PLAYER
+		v.position = b if jump else a.lerp(b, f)
 		v.rotation.y = lerp_angle(_prev_yaw[i], _cur_yaw[i], f)
+		if s and i < s.players.size():
+			# Velocitat vista entre els dos últims passos (també a la repetició).
+			var speed := 0.0 if jump else a.distance_to(b) / Constants.STEP
+			v.animate(s.players[i], speed, delta)
 	if _prev_ball.distance_to(_cur_ball) > SNAP_BALL:
 		_ball.position = _cur_ball
 	else:
@@ -148,22 +154,59 @@ func _update_ring() -> void:
 		_ring.material_override = _ring_mats[ctrl.team.idx]
 
 
-## Crea les vistes dels jugadors la primera vegada; després només cal tornar a
-## sincronitzar, perquè l'ordre dels jugadors (i, per tant, l'equipació) no canvia.
+## Crea les vistes dels jugadors de cada partit nou (la pell, el cabell i el pentinat
+## canvien d'un partit a l'altre).
 func _bind(s: MatchState) -> void:
 	_bound = s.players[0]
 	var n := s.players.size()
-	if _views.size() != n:
-		for v in _views:
-			v.queue_free()
-		_views.clear()
-		for p in s.players:
-			var v := PlayerView.new()
-			v.setup(p, p.team.def)
-			add_child(v)
-			_views.append(v)
-		_prev_pos.resize(n)
-		_cur_pos.resize(n)
-		_prev_yaw.resize(n)
-		_cur_yaw.resize(n)
+	for v in _views:
+		v.queue_free()
+	_views.clear()
+	for p in s.players:
+		var v := PlayerView.new()
+		v.setup(p, p.team.def)
+		add_child(v)
+		_views.append(v)
+	_prev_pos.resize(n)
+	_cur_pos.resize(n)
+	_prev_yaw.resize(n)
+	_cur_yaw.resize(n)
 	_snap_next = true
+
+
+## Accions dels jugadors a partir dels esdeveniments d'un pas de simulació: el golejador
+## ho celebra, el porter que l'encaixa protesta, el porter que atura s'estira, qui fa una
+## entrada s'hi llança i qui fa falta protesta. ref: drawPlayer() (cele) i drawGoal3D()
+func on_events(events: Array[Dictionary]) -> void:
+	if _views.is_empty() or runner == null or runner.sim == null:
+		return
+	var s := runner.sim.s
+	for e in events:
+		match e["type"]:
+			&"goal":
+				_trigger(s, e.get("scorer"), &"celebrate")
+				var conceding: Team = s.teams[1 - int(e["team"])]
+				for p in conceding.players:
+					if p.is_gk:
+						_trigger(s, p, &"protest")
+			&"save":
+				_trigger(s, e.get("player"), &"dive")
+			&"tackle":
+				_trigger(s, e.get("player"), &"lunge", false)
+			&"restart":
+				if e.get("reason") == &"foul":
+					_trigger(s, e.get("by"), &"protest")
+
+
+## Tots els jugadors fan l'acció (escenari views, per revisar animacions).
+func trigger_all(action: StringName) -> void:
+	for v in _views:
+		v.trigger(action)
+
+
+func _trigger(s: MatchState, p: Player, action: StringName, hands_free: bool = true) -> void:
+	if p == null:
+		return
+	var i := s.players.find(p)
+	if i >= 0 and i < _views.size():
+		_views[i].trigger(action, hands_free)

@@ -2,7 +2,8 @@
 ## pausa, descans i final. Amb `-- --scenario=<nom>` prepara situacions per a captures
 ## (tools/shot.sh, tools/shot_views.sh) i proves (tools/smoke.sh, tools/bench.sh):
 ##   menu · intro · match · human · pc · pause · break · full · smoke · smoke_human ·
-##   bench · views
+##   bench · views · follow (càmera que segueix un jugador de tools/views.json mentre
+##   juga: --cams=jugador_davant)
 ## Altres arguments: --time=tarda|nit (per defecte, nit), --quality=baixa|mitjana|alta|ultra
 ## i, per provar, --qset=clau=valor,... (canvia valors del preset; vegeu Quality.override).
 ## ref: línies 1940–2029 (startMatch(), backToMenu(), togglePause(), start())
@@ -49,6 +50,7 @@ func _ready() -> void:
 	menu.night = stadium.night
 	menu.night_changed.connect(stadium.set_night)
 	runner.stepped.connect(stadium.on_step)
+	runner.stepped.connect(view.on_events)
 	view.runner = runner
 	cam.runner = runner
 	cam.view = view
@@ -191,11 +193,18 @@ func _start_scenario() -> void:
 			runner.paused = true
 			hud.visible = false
 			_shots = _view_list()
+			if _arg("action") != "":
+				# Tots els jugadors fan l'acció (revisar animacions: --action=celebrate).
+				view.trigger_all(StringName(_arg("action")))
 			if _arg("net") != "":
 				# Xarxa de la porteria dreta deformant-se, `net` segons després del gol.
 				stadium.fx.net_side = 1
 				stadium.fx.net_y = 0.4
 				stadium.fx.net_t = float(_arg("net"))
+		"follow":
+			_quick_match(-1, 8.0)
+			hud.visible = false
+			_shots = _view_list()
 		"smoke":
 			start_match(-1, "normal", 40.0)
 		"smoke_human":
@@ -220,6 +229,8 @@ func _process(delta: float) -> void:
 		stadium.update_frame()
 	if scenario == "views":
 		_views_step()
+	elif scenario == "follow" and not _shots.is_empty():
+		cam.set_fixed(_resolve_view(_shots[0][1]))
 	elif scenario.begins_with("smoke"):
 		_smoke_step(delta)
 	elif scenario == "bench":
@@ -301,7 +312,7 @@ func _bench_step(delta: float) -> void:
 
 ## Combinacions [angle, nit] de l'escenari views: --cams=a,b (per defecte, totes les de
 ## tools/views.json) i --times=tarda,nit. Amb --net=<segons>, la xarxa de la dreta surt
-## deformada com després d'un gol.
+## deformada com després d'un gol; amb --action=<animació>, tots els jugadors la fan.
 func _view_list() -> Array:
 	var all: Dictionary = JSON.parse_string(FileAccess.get_file_as_string(VIEWS_PATH))
 	all.erase("_doc")
@@ -328,7 +339,7 @@ func _views_step() -> void:
 		# Canviar de tarda a nit fa refer el cel i el mapa de reflexos: s'espera més.
 		_settle = VIEWS_SETTLE * (4 if stadium.night != shot[2] else 1)
 		stadium.set_night(shot[2])
-		cam.set_fixed(shot[1])
+		cam.set_fixed(_resolve_view(shot[1]))
 	_frames += 1
 	if _frames < _settle:
 		return
@@ -338,3 +349,26 @@ func _views_step() -> void:
 	print("Captura: ", ProjectSettings.globalize_path(path))
 	_shots.pop_front()
 	_frames = 0
+
+
+## Angle fix que segueix un jugador ("follow": [equip, dorsal] a tools/views.json).
+func _resolve_view(v: Dictionary) -> Dictionary:
+	if not v.has("follow"):
+		return v
+	var target: Player = null
+	for p in runner.sim.s.players:
+		if p.team.idx == int(v["follow"][0]) and p.num == int(v["follow"][1]):
+			target = p
+	if target == null:
+		return v
+	var a := target.face + deg_to_rad(float(v["ang"]))
+	var d := float(v["dist"])
+	return {
+		"ex": target.x + cos(a) * d,
+		"ey": target.y + sin(a) * d,
+		"ez": float(v["h"]),
+		"tx": target.x,
+		"ty": target.y,
+		"tz": 0.95,
+		"w": float(v["w"]),
+	}

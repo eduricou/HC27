@@ -4,6 +4,9 @@ Registre de l'origen i la llicència de cada recurs que entra al joc (models, te
 
 | Recurs | Ruta | Origen | Llicència | Notes |
 |---|---|---|---|---|
+| Cos del jugador, pentinats i barba | `models/players/` | [Universal Base Characters](https://quaternius.itch.io/universal-base-characters) [Standard], de Quaternius | CC0 1.0 | Textures reduïdes a 1024 px. Al `.gltf` del cos, corregits els noms de dues textures (`*_png.png` → `*.png`). |
+| Animacions | `models/animations/UAL1_Standard.glb`, `UAL2_Standard.glb` | [Universal Animation Library](https://quaternius.itch.io/universal-animation-library) 1 i [2](https://quaternius.itch.io/universal-animation-library-2) [Standard], de Quaternius | CC0 1.0 | Només per a `tools/build_player_anims.gd`, que en fa `players.res` (inclòs al joc). Els `.glb` no s'exporten. |
+| Dígits dels dorsals | `textures/players/digits.png` | Generats per `tools/bake_textures.gd` | Propis del projecte | Lletra Bahnschrift de Windows, desada com a imatge. |
 | Textures del camp | `textures/stadium/*.png` | Generades per `tools/bake_textures.gd` (port del dibuix amb canvas de la web) | Pròpies del projecte | El text de les pancartes i del rètol de les casetes del club està dibuixat amb la lletra Bahnschrift de Windows i desat com a imatge. El joc no inclou el fitxer de la lletra. |
 
 ## Addons i eines dins del repositori

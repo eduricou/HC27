@@ -6,9 +6,9 @@ al Camp Municipal d'Hoquei de Mataró. És un port de la versió web: reference/
 Regles, constants i toleràncies: docs/regles.md. Decisions: docs/decisions/.
 
 ## Estat
-- Fases 0 (preparació), 1 (simulació headless), 2 (primer jugable amb caixes grises) i
-  3 (estadi i gespa) fetes el 5/11/2026. Següent: fase 4 (jugadors riggejats i animacions),
-  pla §9 i §10.
+- Fases 0 (preparació), 1 (simulació headless), 2 (primer jugable amb caixes grises),
+  3 (estadi i gespa) i 4 (jugadors amb esquelet i animacions, 6/11/2026) fetes.
+  Següent: fase 5 (càmeres, repeticions, HUD i menús), pla §9 i §10.
 - La referència és la versió de 2.029 línies, no la «v4» del pla original (docs/decisions/0001).
 - La simulació de src/sim/ reprodueix la web pas a pas amb la mateixa llavor
   (docs/decisions/0002). Un partit triga ~10 s en un procés i ens hi quedem: el criteri és
@@ -37,8 +37,10 @@ Regles, constants i toleràncies: docs/regles.md. Decisions: docs/decisions/.
 - Comparar amb la web des dels angles fixos de tools/views.json:
   `node tools/shot_web.mjs [angles] [hores]` → build/shots/web/ ·
   `bash tools/shot_views.sh [angles] [hores] [qualitat]` → build/shots/godot/ (<angle>_<tarda|nit>.png)
-- Textures de l'estadi (assets/textures/stadium/*.png): `bash tools/bake_textures.sh` (obre
-  una finestra; és el port de les funcions make*() de la web).
+- Textures de l'estadi i dígits dels dorsals (assets/textures/): `bash tools/bake_textures.sh`
+  (obre una finestra; és el port de les funcions make*() de la web).
+- Animacions dels jugadors (assets/models/animations/players.res, a partir de les UAL de
+  Quaternius): `"$GODOT" --headless --path . -s res://tools/build_player_anims.gd`.
 - Recorregut complet sense pantalla (partit → descansos → final → menú; falla si hi ha errors
   o avisos a la consola): `bash tools/smoke.sh`. Passa-ho després de tocar src/game o src/ui.
 - Fps a 1920×1080 sense VSync: `bash tools/bench.sh [segons] [qualitat] [hora] [res3d] [qset]`
@@ -73,9 +75,19 @@ Regles, constants i toleràncies: docs/regles.md. Decisions: docs/decisions/.
   una prova). Porta també la llum (tarda: sol; nit: 6 focus), el cel i l'entorn. Shader
   globals a project.godot: night, crowd_jump. El camp fix va a la capa 2 i els focus de nit
   no en fan ombra (shadow_caster_mask). Efectes del partit (xarxa, públic): StadiumFx.
+- Jugadors (fase 4, docs/decisions/0007): PlayerView (posició i orientació, de MatchView)
+  conté un PlayerRig (src/game/players/): cos de Quaternius (CC0) amb l'equipació pintada pel
+  shader player_kit (KitMesh: textura de dades per vèrtex llegida amb VERTEX_ID), AnimationTree
+  (locomoció sincronitzada: ritme = velocitat / passa, peus sense lliscar), PostureModifier3D
+  i IK de cames i braços. La pala del pal és sempre al punt de control de la simulació
+  (stickPt/stickWorld) i les mans hi van amb IK. Les accions (celebrar, protestar, estirada,
+  entrada) les disparen els esdeveniments a MatchView.on_events.
 - Presets de qualitat: src/game/quality.gd (`--quality=baixa|mitjana|alta|ultra`, per defecte
   alta). Arguments del joc: `--time=tarda|nit` (per defecte nit, com la web). Decisions de la
   fase 3: docs/decisions/0005 i 0006.
+- Escenaris de revisió: `views` (angles de tools/views.json; també segueixen jugadors amb
+  "follow"; `--action=celebrate` fa fer l'acció a tothom) i `follow` (càmera que segueix un
+  jugador mentre juga).
 - Unitats en metres i segons. Simulació: x = llargada (91,4), y = amplada (55), z = altura.
   Vista: Vector3(x, z, y).
 - Constants del camp i del joc: src/sim/constants.gd, copiades de la referència.

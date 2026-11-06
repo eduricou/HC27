@@ -539,6 +539,15 @@ Les durades són orientatives i suposen una sola persona a temps parcial.
 - El contacte del pal amb la pilota és coherent.
 - Les equipacions compleixen la llista de comprovació.
 
+**Fet (6/11/2026).**
+- Model i animacions de Quaternius (CC0), sense Blender ni Mixamo. Les animacions es converteixen a l'esquelet del jugador amb `tools/build_player_anims.gd`.
+- Les equipacions es pinten amb un shader damunt del cos, i hi ha dorsals, variacions de pell, cabells i barba, i porters amb casc, guardes, xuteres i guants.
+- Locomoció amb els cicles sincronitzats: el peu de suport llisca ≤ 7 % entre 1 i 9 m/s (hi ha una prova).
+- Postura d'hoquei i IK de cames i braços. La pala del pal sempre és al punt de control de la simulació, i les dues mans hi van amb IK.
+- 22 jugadors animats: 174–263 fps amb *Baixa* a 1080p a l'Intel Arc 130V.
+- Pendent: no hi ha animacions d'hoquei fetes a mà (push, hit, slap, revés). El cop és procedural, com a la web. L'estirada del porter i les seves proteccions són provisionals.
+- Decisions: `docs/decisions/0007`.
+
 ### Fase 5: càmeres, repeticions, HUD i menús (1,5 setmanes)
 
 **Càmeres:**

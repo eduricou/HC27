@@ -1,4 +1,5 @@
-# Genera les textures del camp a assets/textures/stadium/ (PNG). Parteix de les funcions
+# Genera les textures del camp (assets/textures/stadium/) i els dígits dels dorsals
+# (assets/textures/players/), en PNG. Parteix de les funcions
 # que a la web les dibuixen amb canvas en arrencar: makeNoise(), makeLED(),
 # makeClubhouse(), makeFacade(), makePine() i makeLamp() (línies 1387–1467 de la
 # referència). Aquí es fan una sola vegada i es desen, perquè Godot les importi amb
@@ -16,7 +17,7 @@
 # - La resta té el doble de resolució que a la web, amb el mateix dibuix.
 extends SceneTree
 
-const OUT := "res://assets/textures/stadium"
+const OUT := "res://assets/textures"
 const FONT_FILE := "C:/Windows/Fonts/bahnschrift.ttf"
 
 ## Mida d'una persona de l'atles (0,6 x 1,8 m) i nombre de columnes i files.
@@ -60,19 +61,25 @@ func _initialize() -> void:
 
 
 func _run() -> void:
-	DirAccess.make_dir_recursive_absolute(ProjectSettings.globalize_path(OUT))
+	for sub in ["stadium", "players"]:
+		DirAccess.make_dir_recursive_absolute(ProjectSettings.globalize_path(OUT + "/" + sub))
 	_font = _make_font()
 	_rng.seed = 2027
-	_save(_noise(), "noise")
-	await _bake("people", Vector2i(CELL.x * ATLAS.x, CELL.y * ATLAS.y), _draw_people, true)
-	await _bake("led", Vector2i(4096, 64), _draw_led)
-	await _bake("clubhouse", Vector2i(1024, 256), _draw_clubhouse)
-	await _bake("facade_hospital", Vector2i(256, 256), _draw_facade.bind(Color("e9e7e0"), true))
-	await _bake("facade_flats", Vector2i(256, 256), _draw_facade.bind(Color("c8b699"), false))
-	await _bake("pine", Vector2i(256, 256), _draw_pine, true)
-	await _bake("pine_top", Vector2i(128, 128), _draw_pine_top, true)
-	await _bake("tree", Vector2i(256, 256), _draw_tree, true)
-	await _bake("lamp", Vector2i(128, 64), _draw_lamp)
+	_save(_noise(), "stadium/noise")
+	await _bake("stadium/people", Vector2i(CELL.x * ATLAS.x, CELL.y * ATLAS.y), _draw_people, true)
+	await _bake("stadium/led", Vector2i(4096, 64), _draw_led)
+	await _bake("stadium/clubhouse", Vector2i(1024, 256), _draw_clubhouse)
+	await _bake(
+		"stadium/facade_hospital", Vector2i(256, 256), _draw_facade.bind(Color("e9e7e0"), true)
+	)
+	await _bake(
+		"stadium/facade_flats", Vector2i(256, 256), _draw_facade.bind(Color("c8b699"), false)
+	)
+	await _bake("stadium/pine", Vector2i(256, 256), _draw_pine, true)
+	await _bake("stadium/pine_top", Vector2i(128, 128), _draw_pine_top, true)
+	await _bake("stadium/tree", Vector2i(256, 256), _draw_tree, true)
+	await _bake("stadium/lamp", Vector2i(128, 64), _draw_lamp)
+	await _bake("players/digits", Vector2i(640, 64), _draw_digits, true)
 	print("Textures desades a %s" % OUT)
 	quit(0)
 
@@ -414,6 +421,21 @@ func _draw_tree(c: CanvasItem) -> void:
 				col = Color("3e6632")
 			var pos := center + off + Vector2(cos(a) * spread.x, sin(a) * spread.y) * d
 			_ellipse(c, pos, Vector2(r, r * 0.8), col)
+
+
+## Dígits dels dorsals (0–9 en una fila de caselles de 64x64), en blanc sobre transparent:
+## el color el posa el shader de l'equipació. ref: drawPlayer() (dorsal a l'esquena)
+func _draw_digits(c: CanvasItem) -> void:
+	# Amplada normal (no estreta): els dorsals han de ser gruixuts.
+	var condensed := _font
+	if _font is FontVariation:
+		var wide := (_font as FontVariation).duplicate() as FontVariation
+		var ts := TextServerManager.get_primary_interface()
+		wide.variation_opentype = {ts.name_to_tag("wght"): 700, ts.name_to_tag("wdth"): 100}
+		_font = wide
+	for d in 10:
+		_text(c, str(d), Vector2(d * 64 + 32, 33), 62, Color.WHITE, 60.0)
+	_font = condensed
 
 
 ## Capçal del focus amb 2x4 llums. ref: makeLamp()
