@@ -73,7 +73,10 @@ func load_file(path: String = PATH) -> bool:
 		volumes[bus] = clampf(float(cf.get_value("so", String(bus), volumes[bus])), 0.0, 1.0)
 	bindings = {}
 	for action: StringName in InputActions.ACTIONS:
-		var b: Variant = cf.get_value("tecles", String(action), null)
+		# Amb get_value(..., null), Godot dona error si la clau no hi és.
+		if not cf.has_section_key("tecles", String(action)):
+			continue
+		var b: Variant = cf.get_value("tecles", String(action))
 		if b is Dictionary:
 			bindings[action] = b
 	side = clampi(int(cf.get_value("partit", "costat", side)), -1, 1)
