@@ -425,50 +425,31 @@ func _attach_hair(path: String, color: Color) -> void:
 	mi.set_instance_shader_parameter("hair_color", color)
 
 
-## Casc amb reixa, guardes, xuteres i guants del porter, enganxats als ossos.
+## Casc amb reixa, guardes, xuteres i guants del porter (GkGear), enganxats als ossos.
+## Els ribets i les franges són del color de la samarreta que més contrasta.
 func _gk_gear(def: TeamData) -> void:
 	var gk: Dictionary = def.gk_kit
-	var pads := _plain(Color(gk["pads"]))
-	var helmet := _plain(Color(gk["helmet"]))
-	var cage := _plain(Color("3a3f45"))
-	var head: Vector3 = skeleton.get_bone_global_rest(skeleton.find_bone("Head")).origin
-	var sphere := SphereMesh.new()
-	sphere.radius = 0.145
-	sphere.height = 0.29
-	_gear(
-		"Head",
-		sphere,
-		Transform3D(Basis.from_scale(Vector3(1.0, 0.95, 1.12)), head + Vector3(0, 0.1, -0.005)),
-		helmet
-	)
-	for i in 3:
-		var bar := BoxMesh.new()
-		bar.size = Vector3(0.2, 0.012, 0.012)
-		_gear("Head", bar, Transform3D(Basis(), head + Vector3(0, 0.05 + i * 0.04, 0.15)), cage)
+	var pads := Color(gk["pads"])
+	var shell := Color(gk["helmet"])
+	var kit: Array[Color] = [Color(gk["shirt"]), Color(gk["shirt2"])]
+	var accent := GkGear.contrast(pads, kit)
+	_gear("Head", GkGear.helmet(shell, GkGear.contrast(shell, kit), pads))
 	for side: String in ["l", "r"]:
-		var knee: Vector3 = skeleton.get_bone_global_rest(skeleton.find_bone("calf_" + side)).origin
-		var ankle: Vector3 = (
-			skeleton.get_bone_global_rest(skeleton.find_bone("foot_" + side)).origin
-		)
-		var pad := BoxMesh.new()
-		pad.size = Vector3(0.2, knee.y - ankle.y + 0.14, 0.14)
-		_gear(
-			"calf_" + side,
-			pad,
-			Transform3D(Basis(), (knee + ankle) * 0.5 + Vector3(0, 0.04, 0.07)),
-			pads
-		)
-		var kicker := BoxMesh.new()
-		kicker.size = Vector3(0.16, 0.12, 0.34)
-		_gear("foot_" + side, kicker, Transform3D(Basis(), ankle + Vector3(0, -0.04, 0.09)), pads)
+		var sgn := 1.0 if side == "l" else -1.0
+		_gear("calf_" + side, GkGear.leg_guard(sgn, pads, accent))
+		_gear("foot_" + side, GkGear.kicker(sgn, pads, accent))
 		var hand: Vector3 = skeleton.get_bone_global_rest(skeleton.find_bone("hand_" + side)).origin
-		var glove := BoxMesh.new()
-		glove.size = Vector3(0.17, 0.13, 0.13) if side == "r" else Vector3(0.12, 0.22, 0.2)
-		var out := -1.0 if side == "r" else 1.0
-		_gear("hand_" + side, glove, Transform3D(Basis(), hand + Vector3(out * 0.07, 0, 0)), pads)
+		# Mà dreta, la que porta el pal; l'esquerra, el protector gran.
+		var half := Vector3(0.085, 0.065, 0.065) if side == "r" else Vector3(0.06, 0.11, 0.1)
+		_gear(
+			"hand_" + side,
+			GkGear.glove(half, pads),
+			Transform3D(Basis(), hand + Vector3(sgn * 0.07, 0, 0))
+		)
 
 
-func _gear(bone: String, mesh: Mesh, model_xf: Transform3D, mat: Material) -> void:
+## Enganxa `mesh` (feta a l'espai del model en repòs, posada amb `model_xf`) a l'os `bone`.
+func _gear(bone: String, mesh: Mesh, model_xf := Transform3D.IDENTITY) -> void:
 	var b := skeleton.find_bone(bone)
 	var att := BoneAttachment3D.new()
 	att.name = "Equip_" + bone
@@ -476,16 +457,5 @@ func _gear(bone: String, mesh: Mesh, model_xf: Transform3D, mat: Material) -> vo
 	att.bone_name = bone
 	var mi := MeshInstance3D.new()
 	mi.mesh = mesh
-	mi.material_override = mat
 	mi.transform = skeleton.get_bone_global_rest(b).affine_inverse() * model_xf
 	att.add_child(mi)
-
-
-static func _plain(c: Color) -> StandardMaterial3D:
-	var key := "plain:" + c.to_html()
-	if not _cache.has(key):
-		var m := StandardMaterial3D.new()
-		m.albedo_color = c
-		m.roughness = 0.5
-		_cache[key] = m
-	return _cache[key]

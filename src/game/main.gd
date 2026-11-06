@@ -598,6 +598,6 @@ func _resolve_view(v: Dictionary) -> Dictionary:
 		"ez": float(v["h"]),
 		"tx": target.x,
 		"ty": target.y,
-		"tz": 0.95,
+		"tz": float(v.get("tz", 0.95)),
 		"w": float(v["w"]),
 	}

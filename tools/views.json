@@ -1,5 +1,5 @@
 {
-  "_doc": "Angles de càmera fixos per comparar captures de la web (tools/shot_web.mjs) i de Godot (tools/shot_views.sh). Coordenades de la simulació (x llargada, y amplada cap a la càmera TV, z altura) i w = amplada visible a la distància de l'objectiu, com CAM a la web (línia 1208). Amb \"follow\": [equip, dorsal], la càmera segueix aquell jugador (Godot): dist i h en metres, ang en graus respecte a on mira (0 = de cara).",
+  "_doc": "Angles de càmera fixos per comparar captures de la web (tools/shot_web.mjs) i de Godot (tools/shot_views.sh). Coordenades de la simulació (x llargada, y amplada cap a la càmera TV, z altura) i w = amplada visible a la distància de l'objectiu, com CAM a la web (línia 1208). Amb \"follow\": [equip, dorsal], la càmera segueix aquell jugador (Godot): dist i h en metres, ang en graus respecte a on mira (0 = de cara), i tz l'alçada on mira (per defecte, 0.95).",
   "tv": {"ex": 0, "ey": 53.5, "ez": 13, "tx": 0, "ty": -1.5, "tz": 0, "w": 33},
   "tv_porteria": {"ex": 34.7, "ey": 53.5, "ez": 13, "tx": 34.7, "ty": -1.5, "tz": 0, "w": 33},
   "ampla": {"ex": -78, "ey": 91.5, "ez": 46, "tx": -6, "ty": -22, "tz": 6, "w": 170},
@@ -9,5 +9,9 @@
   "porteria_lateral": {"ex": 46.4, "ey": 8, "ez": 1.6, "tx": 46.4, "ty": 0, "tz": 1.0, "w": 5},
   "jugador_davant": {"follow": [0, 10], "dist": 4.5, "h": 1.5, "ang": 25, "w": 3.2},
   "jugador_esquena": {"follow": [1, 9], "dist": 4.0, "h": 1.6, "ang": 180, "w": 3.0},
-  "porter": {"follow": [0, 1], "dist": 4.5, "h": 1.4, "ang": 20, "w": 3.4}
+  "porter": {"follow": [0, 1], "dist": 4.5, "h": 1.4, "ang": 20, "w": 3.4},
+  "porter_costat": {"follow": [0, 1], "dist": 3.5, "h": 1.2, "ang": 80, "w": 2.6},
+  "porter_cap": {"follow": [1, 1], "dist": 2.4, "h": 1.5, "ang": -15, "tz": 1.3, "w": 1.0},
+  "porter_visitant": {"follow": [1, 1], "dist": 4.5, "h": 1.4, "ang": -30, "w": 3.4},
+  "porter_lluny": {"follow": [1, 1], "dist": 12, "h": 4, "ang": 35, "w": 7}
 }

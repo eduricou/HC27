@@ -239,3 +239,75 @@ func test_gol_fa_celebrar_i_protestar() -> void:
 	var gv: PlayerView = view.get_child(view.get_child_count() - 22 + s.players.find(gk))
 	assert_str(String(gv.rig._action.animation)).is_equal("protest")
 	runner.stop()
+
+
+# --- Porter ---------------------------------------------------------------------------
+
+
+func _gear_mesh(v: PlayerView, bone: String) -> ArrayMesh:
+	var att := v.rig.skeleton.get_node_or_null("Equip_" + bone)
+	if att == null:
+		return null
+	return (att.get_child(0) as MeshInstance3D).mesh as ArrayMesh
+
+
+static func _verts(mesh: ArrayMesh, surface: int) -> PackedVector3Array:
+	return mesh.surface_get_arrays(surface)[Mesh.ARRAY_VERTEX]
+
+
+## El casc tapa el cap per dalt i pel clatell però deixa la cara a la vista, darrere la
+## reixa; les guardes van de sobre la xutera a sobre el genoll i les xuteres tapen la bota.
+## Els jugadors de camp no porten res de tot això.
+func test_equip_del_porter() -> void:
+	var gk: Player = _sim.s.teams[0].gk
+	var v := _rig_for(gk)
+	var sk := v.rig.skeleton
+	var at := func(b: String) -> Vector3: return sk.get_bone_global_rest(sk.find_bone(b)).origin
+	var helmet := _gear_mesh(v, "Head")
+	assert_int(helmet.get_surface_count()).is_equal(3)
+	var shell := _verts(helmet, 0)
+	var top := -INF
+	var back := INF
+	var face := 0
+	for p in shell:
+		top = maxf(top, p.y)
+		back = minf(back, p.z)
+		if absf(p.x) < 0.05 and p.y > 1.6 and p.y < 1.74 and p.z > 0.06:
+			face += 1
+	var head := Vector3(at.call("Head"))
+	assert_float(top).is_greater(head.y + 0.22)
+	assert_float(back).is_less(-0.12)
+	assert_int(face).override_failure_message("la closca tapa la cara").is_equal(0)
+	var in_front := 0
+	for p in _verts(helmet, 1):
+		if absf(p.x) < 0.02 and p.y > 1.62 and p.y < 1.72 and p.z > 0.15:
+			in_front += 1
+	assert_int(in_front).override_failure_message("no hi ha reixa davant la cara").is_greater(0)
+	for side: String in ["l", "r"]:
+		var pad := _gear_mesh(v, "calf_" + side).get_aabb()
+		var kick := _gear_mesh(v, "foot_" + side).get_aabb()
+		var knee := Vector3(at.call("calf_" + side))
+		assert_float(pad.end.y).is_greater(knee.y + 0.08)
+		assert_float(pad.position.y).is_less(kick.end.y)
+		# La xutera tapa el peu (de 0 a 0,10 d'alçada i de −0,14 a 0,13 de llarg).
+		assert_float(kick.position.z).is_less(-0.14)
+		assert_float(kick.end.z).is_greater(0.13)
+		assert_float(kick.end.y).is_greater(0.11)
+		assert_float(signf(kick.get_center().x)).is_equal(signf(knee.x))
+	assert_object(_gear_mesh(v, "hand_l")).is_not_null()
+	var field := _rig_for(_sim.s.teams[0].players[9])
+	assert_object(_gear_mesh(field, "Head")).is_null()
+
+
+## Cada peça es fa una sola vegada per joc de colors (els dos porters del mateix equip,
+## o el mateix en partits seguits, la comparteixen); el ribet és el color que contrasta.
+func test_equip_del_porter_es_reaprofita() -> void:
+	var lime := Color("c4e84a")
+	var black := Color("1b1d20")
+	assert_object(GkGear.leg_guard(1.0, lime, black)).is_same(GkGear.leg_guard(1.0, lime, black))
+	assert_object(GkGear.leg_guard(-1.0, lime, black)).is_not_same(
+		GkGear.leg_guard(1.0, lime, black)
+	)
+	var navy := Color("14234b")
+	var kit: Array[Color] = [Color("f2c500"), navy]
+	assert_object(GkGear.contrast(Color("f4f4f2"), kit)).is_equal(navy)

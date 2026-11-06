@@ -103,8 +103,18 @@ Ho comprova `test_els_peus_no_rellisquen`, que hi posa un límit del 15 %.
 
 ### 7. Porters
 
-- Porten el mateix cos, amb peces simples enganxades als ossos: casc amb reixa, guardes, xuteres i guants.
+- Porten el mateix cos, amb l'equip enganxat als ossos: casc amb reixa, guardes, xuteres i guants.
 - Fan servir la mateixa locomoció, amb més flexió de genolls.
+- **Revisió (6/11/2026):** l'usuari va trobar que les guardes i el casc (caixes i una esfera) no semblaven reals. Ara l'equip es fa amb codi a `src/game/players/gk_gear.gd`, sense models nous:
+  - **Guardes:** foam corbat davant la canyella, de sobre la xutera fins a sobre el genoll, amb genollera, ranures i una franja de color al costat de fora.
+  - **Xuteres:** tapen la bota, amb la punta rodona i la sola fosca.
+  - **Casc:**
+    - la closca tapa el cap per dalt, pels costats i pel clatell, i deixa la cara a la vista;
+    - té un ribet i una franja de color;
+    - davant la cara hi ha una reixa de barres i, a sota, un protector de coll.
+  - **Colors:** els ribets i les franges són del color de la samarreta del porter que més contrasta.
+  - **Samarreta:** el porter la porta amb coll rodó, sense la V.
+  - **Cost:** l'equip dels dos porters fa uns 28.000 triangles i triga uns 35 ms a fer-se. Es fa una sola vegada, en obrir el menú, i es reaprofita.
 
 ## Què queda pendent (i per què)
 
@@ -112,7 +122,6 @@ Ho comprova `test_els_peus_no_rellisquen`, que hi posa un límit del 15 %.
   - Ara el cop és procedural: el pal fa el gest de la web i els braços el segueixen amb IK.
   - Si s'instal·la Blender, es poden afegir com a OneShot sense tocar res més.
 - **L'estirada del porter** fa servir una animació de lliscar (`Slide_Start`) que només s'hi assembla.
-- **L'equip del porter** està fet amb caixes i una esfera. Es pot millorar amb models.
 - **Els jugadors no tenen variacions de complexió.** La pell, els cabells, la barba i el dorsal sí que canvien.
 
 ## Mesures

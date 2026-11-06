@@ -92,11 +92,12 @@ void fragment() {
 			} else {
 				col = p.y > chest_y + 0.08 ? shirt2 : shirt;
 			}
-			// Coll: un anell estret al voltant del coll i una V al davant.
+			// Coll: un anell estret al voltant del coll i una V al davant (el porter, coll
+			// rodó: sota la samarreta porta el peto).
 			float r = length(vec2(p.x, p.z - neck_z));
 			bool front = p.z > neck_z + 0.03;
 			float vline = collar_y - 0.08 + abs(p.x) * 1.2;
-			bool in_v = front && abs(p.x) < 0.065 && p.y > vline;
+			bool in_v = style != 2 && front && abs(p.x) < 0.065 && p.y > vline;
 			if (in_v && p.y > vline + 0.025) {
 				col = skin;
 				cloth = 0.0;
