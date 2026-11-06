@@ -88,6 +88,24 @@ Ho comprova `test_els_peus_no_rellisquen`, que hi posa un límit del 15 %.
   - Les mans van al mànec amb IK.
   - Així el contacte amb la pilota sempre quadra (ho comprova `test_el_pal_toca_on_toca_la_simulacio`).
   - Durant les accions de mans lliures, el pal passa a la mà dreta.
+- **Revisió (7/11/2026):** l'usuari va demanar revisar la pilota, el pal i com l'agafen les mans. Abans, la pilota feia 24 cm i no girava, el pal era de caixes i gairebé vertical, i les dues mans anaven juntes dalt de tot sense tancar els dits. Ara:
+  - **Pilota** (`BallView`):
+    - té la mida real (7,3 cm de diàmetre);
+    - des de les càmeres de lluny es dibuixa més gran perquè no faci mai menys de 7 px d'alt a 1080p;
+    - roda sense lliscar segons com es mou, i a l'aire manté el gir;
+    - té la costura i una marca perquè es vegi girar, i una ombra de contacte a terra.
+  - **Pal** (`StickMesh`, fet amb codi):
+    - fa 93 cm i té el cap en forma de J amb la cara plana a l'esquerra;
+    - la canya és ovalada i el puny és blanc, amb la franja de l'equip (colors de la web);
+    - el cap reposa pla a terra si la canya s'inclina 32° (`LIE`) i no s'hi clava mai;
+    - la pilota toca la cara del fons del ganxo al punt de control de la simulació, i quan el jugador la porta, on es veu la pilota.
+  - **Mans** (`GripModifier3D`):
+    - l'esquerra agafa dalt de tot i la dreta, més avall, tan avall com li arriba el braç (`RIGHT_REACH`), uns 15 cm més avall;
+    - totes dues tenen el polze cap avall, com al golf;
+    - cada mà segueix la línia de l'espatlla al pal, girada al voltant de la canya;
+    - els dits es tanquen al voltant del puny: el punt on passa la canya i la flexió de cada falange s'han ajustat amb una cerca sobre l'esquelet, de manera que les articulacions queden a uns 2,5 cm de l'eix.
+  - **Postura:** quiets o a poc a poc, els jugadors s'ajupen una mica més (malucs 0,6 rad i pelvis 24 cm avall) perquè la mà dreta pugui baixar per la canya.
+  - **Física de la simulació:** no ha canviat. El fregament, el bot i la velocitat de la pilota són els de la web, que comprova l'oracle (decisió 0002).
 
 ### 6. Accions
 

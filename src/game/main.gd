@@ -580,14 +580,19 @@ func _views_step() -> void:
 	_frames = 0
 
 
-## Angle fix que segueix un jugador ("follow": [equip, dorsal] a tools/views.json).
+## Angle fix que segueix un jugador ("follow": [equip, dorsal] a tools/views.json, o
+## "pilota": qui la porta o l'últim que l'ha tocada).
 func _resolve_view(v: Dictionary) -> Dictionary:
 	if not v.has("follow"):
 		return v
 	var target: Player = null
-	for p in runner.sim.s.players:
-		if p.team.idx == int(v["follow"][0]) and p.num == int(v["follow"][1]):
-			target = p
+	var ball := runner.sim.s.ball
+	if v["follow"] is String:
+		target = ball.owner if ball.owner else ball.last_touch
+	else:
+		for p in runner.sim.s.players:
+			if p.team.idx == int(v["follow"][0]) and p.num == int(v["follow"][1]):
+				target = p
 	if target == null:
 		return v
 	var a := target.face + deg_to_rad(float(v["ang"]))

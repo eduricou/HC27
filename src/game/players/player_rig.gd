@@ -25,12 +25,16 @@ const BEARD_SCENE := "res://assets/models/players/hair/Hair_Beard.gltf"
 const HAIRSTYLE: Array[int] = [0, 1, 2, -1, 0]
 const SHOES := Color("17191c")
 
-## Pal: llargada (de la pala a dalt) i punt de control en repòs. ref: stickPt(), stickWorld()
-const STICK_LEN := 0.97
+## Punt de control del pal en repòs (on va la pilota quan es porta). ref: stickPt()
 const STICK_F := 0.72
 const STICK_SIDE := 0.3
-## On va la mà de dalt (esquerra) quan no hi ha cop, en coordenades locals.
-const TOP_HAND := Vector3(-0.05, 1.0, -0.38)
+## Cap on va la part de dalt del pal (la mà esquerra) quan no hi ha cop, en coordenades
+## locals.
+const TOP_HAND := Vector3(0.04, 1.0, -0.4)
+## La mà dreta baixa per la canya fins on li arriba el braç (metres de l'espatlla al puny),
+## però no més avall que RIGHT_LOW metres del taló.
+const RIGHT_REACH := 0.555
+const RIGHT_LOW := 0.42
 
 ## Locomoció: caminar, córrer i esprintar es mesclen segons la velocitat, sincronitzats
 ## (els tres cicles estirats a 1 s i començant amb el peu esquerre a terra; vegeu
@@ -52,9 +56,13 @@ var posture: PostureModifier3D
 ## flexionats).
 var ik: TwoBoneIK3D
 var leg_ik: TwoBoneIK3D
+var grip: GripModifier3D
 var stick: MeshInstance3D
-## Posició de la pala i de les mans (coordenades locals), per a les proves.
+## On va el centre de la pilota quan el pal la porta (coordenades locals), i els punts del
+## pal on agafen les mans; per a les proves.
 var blade := Vector3.ZERO
+var grip_points: Array[Vector3] = [Vector3.ZERO, Vector3.ZERO]
+## On han d'anar els canells (els objectius de la IK) i on van els colzes.
 var grips: Array[Marker3D] = []
 
 var _body: Node3D
@@ -62,6 +70,9 @@ var _action: AnimationNodeAnimation
 var _action_left := 0.0
 var _last_stun := 0.0
 var _hand_r := -1
+## Quant s'aparta el pal del punt de control de la simulació per anar a la pilota que es
+## veu (suavitzat).
+var _ball_off := Vector3.ZERO
 
 
 func setup(p: Player, def: TeamData) -> void:
@@ -179,8 +190,9 @@ static func gait_rate(v: float) -> float:
 	return maxf(v, walk * 0.6) / stride_at(v)
 
 
-## Un fotograma: `speed` és la velocitat del jugador a la vista (m/s).
-func animate(p: Player, speed: float, delta: float) -> void:
+## Un fotograma: `speed` és la velocitat del jugador a la vista (m/s) i `ball`, on es veu
+## la pilota (global) si la porta aquest jugador (si no, Vector3.INF).
+func animate(p: Player, speed: float, delta: float, ball := Vector3.INF) -> void:
 	tree.set(&"parameters/loco/blend_position", speed)
 	tree.set(&"parameters/rate/scale", gait_rate(speed))
 	tree.set(&"parameters/move/blend_amount", smoothstep(0.15, _gs(GAIT[0]), speed))
@@ -194,8 +206,8 @@ func animate(p: Player, speed: float, delta: float) -> void:
 	# hi afegim.
 	var run := clampf(speed / 6.0, 0.0, 1.0)
 	var lean := lerpf(0.25, 0.12, run) if is_gk else lerpf(0.32, 0.1, run)
-	var hip := lerpf(0.3, 0.12, run) if is_gk else lerpf(0.5, 0.12, run)
-	var drop := lerpf(0.2, 0.08, run) if is_gk else lerpf(0.17, 0.03, run)
+	var hip := lerpf(0.3, 0.12, run) if is_gk else lerpf(0.6, 0.15, run)
+	var drop := lerpf(0.2, 0.08, run) if is_gk else lerpf(0.24, 0.05, run)
 	var k := 1.0 - exp(-delta * 8.0)
 	posture.lean = lerpf(posture.lean, 0.0 if free else lean, k)
 	posture.hip = lerpf(posture.hip, 0.0 if free else hip, k)
@@ -203,12 +215,13 @@ func animate(p: Player, speed: float, delta: float) -> void:
 	# El tronc gira una mica cap a l'esquerra i baixa l'espatlla dreta, cap al pal.
 	posture.twist = lerpf(posture.twist, 0.0 if free else 0.2, k)
 	posture.roll = lerpf(posture.roll, 0.0 if free else lerpf(0.25, 0.1, run), k)
-	_place_stick(p.swing, ik.influence)
+	_place_stick(p.swing, ik.influence, ball, delta)
 
 
 ## Partit nou (es reaprofita el jugador): talla l'acció que feia.
 func reset() -> void:
 	tree.set(&"parameters/shot/request", AnimationNodeOneShot.ONE_SHOT_REQUEST_ABORT)
+	_ball_off = Vector3.ZERO
 	_action_left = 0.0
 	_last_stun = 0.0
 	ik.influence = 1.0
@@ -271,85 +284,87 @@ func _build_ik() -> void:
 		ik.set_end_bone_name(i, "hand_" + s)
 		ik.set_target_node(i, ik.get_path_to(grips[i]))
 		ik.set_pole_node(i, ik.get_path_to(grips[i + 2]))
+	grip = GripModifier3D.new()
+	grip.name = "Puny"
+	grip.rig = self
+	skeleton.add_child(grip)
 
 
-## Pala al punt de control de la simulació (ref: stickWorld(): amb el cop, el pal va enrere,
-## a la dreta i amunt) i el mànec cap a la mà de dalt. Si les mans són lliures, el pal va
-## amb la mà dreta.
-func _place_stick(swing: float, hold: float) -> void:
+## Pal: la pilota toca la cara del fons del ganxo al punt de control (ref: stickWorld():
+## amb el cop, el pal va enrere, a la dreta i amunt). Quan el jugador porta la pilota, el
+## punt de control és la pilota que es veu. La canya va cap a TOP_HAND, el cap reposa a
+## terra sense clavar-s'hi, la mà esquerra agafa dalt de tot i la dreta més avall (amb el
+## cop, s'hi acosta). Si les mans són lliures, el pal va amb la mà dreta.
+func _place_stick(swing: float, hold: float, ball: Vector3, delta: float) -> void:
 	var k := sin((swing / 0.25) * PI) if swing > 0.0 else 0.0
-	var f := STICK_F - k * 0.55
-	var sv := STICK_SIDE + k * 0.35
-	blade = Vector3(sv, k * 0.75, -f)
+	var ctrl := Vector3(STICK_SIDE + k * 0.35, k * 0.75, -(STICK_F - k * 0.55))
+	# Amb la pilota, el pal va on es veu la pilota. La diferència amb el punt de control
+	# es suavitza perquè el pal no salti quan la guanya o la perd.
+	var off := Vector3.ZERO
+	if ball != Vector3.INF:
+		var b := to_local(ball)
+		off = Vector3(b.x - STICK_SIDE, 0.0, b.z + STICK_F) * (1.0 - k)
+	if delta > 0.0:
+		off = _ball_off.lerp(off, 1.0 - exp(-delta * 30.0))
+	_ball_off = off
+	ctrl += off
 	var top_want := TOP_HAND + Vector3(0.25, 0.35, 0.2) * k
-	var dir := (top_want - blade).normalized()
-	var held := _stick_basis(dir)
-	var top := blade + dir * STICK_LEN
-	grips[0].position = top - dir * 0.04
-	grips[1].position = blade + dir * (STICK_LEN * 0.88)
-	var xf := Transform3D(held, blade)
+	var d := (top_want - ctrl).normalized()
+	var basis := StickMesh.place_basis(d, Vector3.LEFT)
+	var r := BallView.RADIUS
+	var origin := ctrl + Vector3(0.0, r, 0.0) - basis * StickMesh.ball_contact(r)
+	# El cap no es clava a terra.
+	var low := INF
+	for q in StickMesh.bottom_points():
+		low = minf(low, origin.y + (basis * q).y)
+	origin.y -= minf(0.0, low)
+	var xf := Transform3D(basis, origin)
+	blade = xf * StickMesh.ball_contact(r)
+	var heel := xf * StickMesh.heel()
+	grip_points[0] = heel + d * (StickMesh.LENGTH - 0.05)
+	grip_points[1] = heel + d * _right_grip(heel, d, k)
+	for i in 2:
+		# La mà continua la línia del braç (de l'espatlla al pal), girada al voltant de la
+		# canya, amb el polze cap avall. El canell va on cal perquè el puny caigui al pal.
+		var arm := grip_points[i] - _shoulder(i)
+		var y := (arm - d * arm.dot(d)).normalized()
+		var hb := Basis(y.cross(-d), y, -d)
+		grip.hand_basis[i] = hb
+		grips[i].position = grip_points[i] - hb * GripModifier3D.hole(i)
+	grip.hold.fill(hold)
 	if hold < 0.999:
 		# Amb la mà dreta: el pal amunt, agafat per dalt.
 		var hand := _body.transform * skeleton.get_bone_global_pose(_hand_r)
 		var up := Vector3(0.15, 1.0, 0.1).normalized()
-		var free_xf := Transform3D(_stick_basis(-up), hand.origin + up * (STICK_LEN - 0.08))
+		var fb := StickMesh.place_basis(up, Vector3.LEFT)
+		var top := StickMesh.heel() + StickMesh.shaft_dir() * (StickMesh.LENGTH - 0.08)
+		var free_xf := Transform3D(fb, hand.origin - fb * top)
 		xf = free_xf.interpolate_with(xf, hold)
 	stick.transform = xf
 
 
-## Base del pal: Y pel mànec (de la pala amunt) i Z cap endavant (on mira la pala).
-static func _stick_basis(dir: Vector3) -> Basis:
-	var fwd := Vector3(0.0, 0.0, -1.0)
-	fwd = (fwd - dir * fwd.dot(dir)).normalized()
-	if fwd.length_squared() < 0.5:
-		fwd = Vector3(1.0, 0.0, 0.0)
-	return Basis(dir.cross(fwd), dir, fwd)
+## On era l'espatlla `i` (0 esquerra, 1 dreta) a l'últim fotograma (coordenades locals).
+func _shoulder(i: int) -> Vector3:
+	return grip.shoulders[i]
+
+
+## Fins on baixa la mà dreta per la canya (metres des del taló): tan avall com li arribi
+## el braç des de l'espatlla, entre RIGHT_LOW i una mica sota la mà de dalt. Amb el cop
+## (k), les mans s'ajunten.
+func _right_grip(heel: Vector3, d: Vector3, k: float) -> float:
+	var hi := StickMesh.LENGTH - 0.16
+	var sh := _shoulder(1)
+	var c := (sh - heel).dot(d)
+	var gap := (heel + d * c).distance_to(sh)
+	var s := c - sqrt(maxf(0.0, RIGHT_REACH * RIGHT_REACH - gap * gap))
+	return lerpf(clampf(s, RIGHT_LOW, hi), hi, k)
 
 
 func _build_stick(def: TeamData) -> void:
 	stick = MeshInstance3D.new()
 	stick.name = "Pal"
-	stick.mesh = stick_mesh(Color(def.color))
+	stick.mesh = StickMesh.build(Color(def.color))
 	add_child(stick)
-
-
-## Pal d'hoquei (origen a la pala, mànec cap a +Y, ganxo cap a +Z): mànec fosc, cinta
-## blanca a baix, franja del color de l'equip i puny negre. ref: drawStick()
-static func stick_mesh(team: Color) -> ArrayMesh:
-	var key := "stick:" + team.to_html()
-	if _cache.has(key):
-		return _cache[key]
-	var mesh := ArrayMesh.new()
-	var dark := Color("1c1f23")
-	# [mida, centre, gir al voltant de X, color]
-	var parts := [
-		[Vector3(0.032, 0.84, 0.024), Vector3(0, 0.55, 0), 0.0, dark],
-		[Vector3(0.036, 0.16, 0.028), Vector3(0, 0.89, 0), 0.0, Color("0d0e10")],
-		[Vector3(0.035, 0.12, 0.027), Vector3(0, 0.47, 0), 0.0, team],
-		[Vector3(0.034, 0.08, 0.026), Vector3(0, 0.15, 0), 0.0, Color("e9ece6")],
-		[Vector3(0.03, 0.14, 0.024), Vector3(0, 0.07, 0.025), 0.4, Color("e9ece6")],
-		[Vector3(0.03, 0.035, 0.11), Vector3(0, 0.02, 0.08), 0.0, dark],
-	]
-	for part: Array in parts:
-		var box := BoxMesh.new()
-		box.size = part[0]
-		var arrays := box.get_mesh_arrays()
-		var xf := Transform3D(Basis(Vector3.RIGHT, part[2]), part[1])
-		var v: PackedVector3Array = arrays[Mesh.ARRAY_VERTEX]
-		var n: PackedVector3Array = arrays[Mesh.ARRAY_NORMAL]
-		for i in v.size():
-			v[i] = xf * v[i]
-			n[i] = xf.basis * n[i]
-		arrays[Mesh.ARRAY_VERTEX] = v
-		arrays[Mesh.ARRAY_NORMAL] = n
-		arrays[Mesh.ARRAY_TANGENT] = null
-		mesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arrays)
-		var m := StandardMaterial3D.new()
-		m.albedo_color = part[3]
-		m.roughness = 0.45
-		mesh.surface_set_material(mesh.get_surface_count() - 1, m)
-	_cache[key] = mesh
-	return mesh
 
 
 # --- Equipació, cabells i porter ------------------------------------------------------

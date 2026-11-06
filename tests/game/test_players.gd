@@ -113,23 +113,32 @@ func test_velocitats_de_les_animacions_de_correr() -> void:
 # --- Pal, mans i peus -------------------------------------------------------------------
 
 
-## La pala és al punt de control de la simulació (stickPt), també durant un cop.
+## La pilota toca la cara del ganxo al punt de control de la simulació (stickPt), també
+## durant un cop; i quan el jugador porta la pilota, on es veu la pilota.
 func test_el_pal_toca_on_toca_la_simulacio() -> void:
 	var s := _sim.s
 	var p := s.teams[0].players[6]
 	var v := _rig_for(p)
+	var r := BallView.RADIUS
 	for swing: float in [0.0, 0.12, 0.2]:
 		p.swing = swing
 		await _frames(v, p, 2)
 		var k := sin((swing / 0.25) * PI) if swing > 0.0 else 0.0
 		BallActions.stick_pt(s, p, 0.72 - k * 0.55, 0.3 + k * 0.35)
-		var want := Coords.to_view(s.st_x, s.st_y, k * 0.75)
-		var got := v.rig.stick.global_position
+		var want := Coords.to_view(s.st_x, s.st_y, k * 0.75 + r)
+		var got := v.rig.to_global(v.rig.blade)
 		(
 			assert_vector(got)
 			. override_failure_message("swing %s: %s vs %s" % [swing, got, want])
-			. is_equal_approx(want, Vector3.ONE * 0.01)
+			. is_equal_approx(want, Vector3.ONE * 0.015)
 		)
+	p.swing = 0.0
+	var ball := v.to_global(Vector3(0.15, r, -0.9))
+	for i in 20:
+		v.animate(p, 0.0, 1.0 / 60.0, ball)
+		await get_tree().process_frame
+	var at := v.rig.to_global(v.rig.blade)
+	assert_vector(at).is_equal_approx(ball, Vector3.ONE * 0.015)
 
 
 ## Amb la IK, les mans arriben al pal i els peus es queden a terra. La postura final (amb
@@ -140,22 +149,40 @@ func test_mans_al_pal_i_peus_a_terra() -> void:
 	var rig := v.rig
 	var sk := rig.skeleton
 	var final := {}
+	var tips := ["index_04_leaf", "middle_04_leaf", "ring_04_leaf", "pinky_04_leaf"]
 	var grab := func() -> void:
 		for b: String in ["hand_l", "hand_r", "foot_l", "foot_r"]:
-			final[b] = (sk.global_transform * sk.get_bone_global_pose(sk.find_bone(b))).origin
-		final["grip_l"] = rig.grips[0].global_position
-		final["grip_r"] = rig.grips[1].global_position
+			final[b] = sk.global_transform * sk.get_bone_global_pose(sk.find_bone(b))
+		for i in 2:
+			for t: String in tips:
+				var b := sk.find_bone(t + ["_l", "_r"][i])
+				final[t + str(i)] = (sk.global_transform * sk.get_bone_global_pose(b)).origin
 	sk.skeleton_updated.connect(grab)
 	await _frames(v, p, 20)
 	sk.skeleton_updated.disconnect(grab)
 	assert_bool(final.is_empty()).is_false()
+	var grips: Array[Vector3] = []
 	for i in 2:
-		var hand: Vector3 = final[["hand_l", "hand_r"][i]]
-		var d := hand.distance_to(final[["grip_l", "grip_r"][i]])
-		# La mà (el canell) queda a tocar del punt on agafa el pal.
-		assert_float(d).override_failure_message("mà %d a %.3f m del pal" % [i, d]).is_less(0.1)
+		var hand: Transform3D = final[["hand_l", "hand_r"][i]]
+		var grip := rig.to_global(rig.grip_points[i])
+		grips.append(grip)
+		# La canya passa pel puny...
+		var d := (hand * GripModifier3D.hole(i)).distance_to(grip)
+		assert_float(d).override_failure_message("puny %d a %.3f m del pal" % [i, d]).is_less(0.04)
+		# ... i els dits l'envolten (les puntes, a tocar de la superfície).
+		var axis := rig.to_global(rig.grip_points[0]) - rig.to_global(rig.grip_points[1])
+		axis = axis.normalized()
+		for t: String in tips:
+			var q: Vector3 = final[t + str(i)] - grip
+			var gap := (q - axis * q.dot(axis)).length()
+			assert_float(gap).override_failure_message("%s %d a %.3f m" % [t, i, gap]).is_less(
+				0.045
+			)
+	# La dreta agafa més avall que l'esquerra.
+	assert_float(grips[0].distance_to(grips[1])).is_greater(0.12)
+	assert_float(grips[0].y).is_greater(grips[1].y)
 	for f: String in ["foot_l", "foot_r"]:
-		var y: float = final[f].y
+		var y: float = (final[f] as Transform3D).origin.y
 		assert_float(y).override_failure_message("%s a %.3f m" % [f, y]).is_less(0.16)
 
 

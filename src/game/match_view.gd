@@ -6,8 +6,6 @@
 class_name MatchView
 extends Node3D
 
-## Més gran que la real (0,037 m) perquè es vegi des de la càmera TV.
-const BALL_RADIUS := 0.12
 ## Salts més grans que això en un pas són teletransports (represes, servei, repetició):
 ## no s'interpolen.
 const SNAP_PLAYER := 2.0
@@ -16,7 +14,7 @@ const SNAP_BALL := 3.0
 var runner: MatchRunner
 
 var _views: Array[PlayerView] = []
-var _ball: MeshInstance3D
+var _ball: BallView
 var _ring: MeshInstance3D
 var _ring_mats: Array[StandardMaterial3D] = []
 var _prev_pos := PackedVector3Array()
@@ -32,18 +30,8 @@ var _snap_next := true
 func _ready() -> void:
 	# Després del MatchRunner, que fa el pas de simulació.
 	process_physics_priority = 10
-	_ball = MeshInstance3D.new()
+	_ball = BallView.new()
 	_ball.name = "Pilota"
-	var sm := SphereMesh.new()
-	sm.radius = BALL_RADIUS
-	sm.height = BALL_RADIUS * 2.0
-	_ball.mesh = sm
-	var bm := StandardMaterial3D.new()
-	bm.albedo_color = Color("f6f2d8")
-	bm.emission_enabled = true
-	bm.emission = Color("f6f2d8")
-	bm.emission_energy_multiplier = 0.25
-	_ball.material_override = bm
 	add_child(_ball)
 	_ring = MeshInstance3D.new()
 	_ring.name = "Controlat"
@@ -85,7 +73,7 @@ func capture() -> void:
 		_cur_yaw[i] = Coords.face_to_yaw(p.face)
 	_prev_ball = _cur_ball
 	var b := s.ball
-	_cur_ball = Coords.to_view(b.x, b.y, b.z + BALL_RADIUS)
+	_cur_ball = Coords.to_view(b.x, b.y, b.z)
 	if _snap_next:
 		snap()
 
@@ -113,6 +101,12 @@ func _apply(f: float, delta: float = 0.0) -> void:
 	if _views.is_empty():
 		return
 	var s := runner.sim.s if runner and runner.sim else null
+	# La pilota primer: el jugador que la porta hi posa el pal.
+	if _prev_ball.distance_to(_cur_ball) > SNAP_BALL:
+		_ball.place(_cur_ball, delta, true)
+	else:
+		_ball.place(_prev_ball.lerp(_cur_ball, f), delta)
+	var owner: Player = s.ball.owner if s else null
 	for i in _views.size():
 		var a := _prev_pos[i]
 		var b := _cur_pos[i]
@@ -123,11 +117,8 @@ func _apply(f: float, delta: float = 0.0) -> void:
 		if s and i < s.players.size():
 			# Velocitat vista entre els dos últims passos (també a la repetició).
 			var speed := 0.0 if jump else a.distance_to(b) / Constants.STEP
-			v.animate(s.players[i], speed, delta)
-	if _prev_ball.distance_to(_cur_ball) > SNAP_BALL:
-		_ball.position = _cur_ball
-	else:
-		_ball.position = _prev_ball.lerp(_cur_ball, f)
+			var p := s.players[i]
+			v.animate(p, speed, delta, _ball.position if p == owner else Vector3.INF)
 	_update_ring()
 
 

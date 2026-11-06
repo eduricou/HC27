@@ -101,9 +101,12 @@ Regles, constants i toleràncies: docs/regles.md. Decisions: docs/decisions/.
   conté un PlayerRig (src/game/players/): cos de Quaternius (CC0) amb l'equipació pintada pel
   shader player_kit (KitMesh: textura de dades per vèrtex llegida amb VERTEX_ID), AnimationTree
   (locomoció sincronitzada: ritme = velocitat / passa, peus sense lliscar), PostureModifier3D
-  i IK de cames i braços. La pala del pal és sempre al punt de control de la simulació
-  (stickPt/stickWorld) i les mans hi van amb IK. Les accions (celebrar, protestar, estirada,
-  entrada) les disparen els esdeveniments a MatchView.on_events.
+  i IK de cames i braços. El pal (StickMesh, fet amb codi) toca la pilota amb la cara del
+  ganxo al punt de control de la simulació (stickPt/stickWorld) o, si la porta, on es veu
+  la pilota. Les mans hi van amb IK i GripModifier3D les gira i hi tanca els dits.
+  L'equip del porter és GkGear, i tots dos fan servir MeshPart. La pilota és BallView: té
+  la mida real, però mai fa menys de 7 px a la pantalla, i roda. Les accions (celebrar,
+  protestar, estirada, entrada) les disparen els esdeveniments a MatchView.on_events.
 - So (src/game/audio/, docs/decisions/0009): MatchSound escolta els esdeveniments de cada
   pas (com MatchView) i fa sonar SfxBank en 3D al lloc on passen; el públic (petit) és un
   murmuri en dues capes amb reaccions. Cada tipus d'esdeveniment de src/sim/ ha de ser a

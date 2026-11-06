@@ -49,92 +49,6 @@ const CAGE_PHI: Array[float] = [-44.0, -22.0, 0.0, 22.0, 44.0]
 static var _cache := {}
 
 
-## Malla en construcció: vèrtexs, normals, colors i triangles d'una superfície.
-class Part:
-	var verts := PackedVector3Array()
-	var normals := PackedVector3Array()
-	var colors := PackedColorArray()
-	var idx := PackedInt32Array()
-
-	## Graella pts[i][j]: i al llarg, j al voltant (si `closed`, la volta es tanca). Les
-	## normals surten de la mateixa graella i miren lluny de refs[i] (el centre de cada
-	## anella), o cap a dins si `inward`.
-	func grid(
-		pts: Array[PackedVector3Array],
-		cols: Array[PackedColorArray],
-		closed: bool,
-		refs: PackedVector3Array,
-		inward := false
-	) -> void:
-		var rows := pts.size()
-		var m := pts[0].size()
-		var start := verts.size()
-		for i in rows:
-			for j in m:
-				var p := pts[i][j]
-				var du := pts[mini(i + 1, rows - 1)][j] - pts[maxi(i - 1, 0)][j]
-				var jn := (j + 1) % m if closed else mini(j + 1, m - 1)
-				var jp := (j + m - 1) % m if closed else maxi(j - 1, 0)
-				var n := du.cross(pts[i][jn] - pts[i][jp])
-				var out := p - refs[i]
-				if n.length_squared() < 1e-14:
-					# Anella feta un punt (una punta o el pol): la normal va enfora.
-					var axis := refs[0] - refs[1] if i == 0 else refs[i] - refs[i - 1]
-					n = out if out.length_squared() > 1e-10 else axis
-				elif n.dot(out) < 0.0:
-					n = -n
-				verts.append(p)
-				normals.append((-n if inward else n).normalized())
-				colors.append(cols[i][j])
-		for i in rows - 1:
-			for j in m if closed else m - 1:
-				var j2 := (j + 1) % m
-				var a := start + i * m + j
-				var b := start + (i + 1) * m + j
-				var c := start + (i + 1) * m + j2
-				var d := start + i * m + j2
-				_tri(a, b, c)
-				_tri(a, c, d)
-
-	## Tub de radi `r` al llarg de `path` (les barres de la reixa).
-	func tube(path: PackedVector3Array, r: float, color: Color, sides := 6) -> void:
-		var along := (path[path.size() - 1] - path[0]).normalized()
-		var ref := Vector3.UP if absf(along.y) < 0.7 else Vector3.RIGHT
-		var rows: Array[PackedVector3Array] = []
-		var cols: Array[PackedColorArray] = []
-		for i in path.size():
-			var t := (path[mini(i + 1, path.size() - 1)] - path[maxi(i - 1, 0)]).normalized()
-			var u := t.cross(ref).normalized()
-			var w := t.cross(u)
-			var ring := PackedVector3Array()
-			var rc := PackedColorArray()
-			for k in sides:
-				var a := TAU * k / sides
-				ring.append(path[i] + (u * cos(a) + w * sin(a)) * r)
-				rc.append(color)
-			rows.append(ring)
-			cols.append(rc)
-		grid(rows, cols, true, path)
-
-	## Godot dibuixa la cara de davant dels triangles en sentit horari.
-	func _tri(a: int, b: int, c: int) -> void:
-		var face := (verts[b] - verts[a]).cross(verts[c] - verts[a])
-		if face.dot(normals[a] + normals[b] + normals[c]) > 0.0:
-			idx.append_array([a, c, b])
-		else:
-			idx.append_array([a, b, c])
-
-	func add_to(mesh: ArrayMesh, mat: Material) -> void:
-		var arr := []
-		arr.resize(Mesh.ARRAY_MAX)
-		arr[Mesh.ARRAY_VERTEX] = verts
-		arr[Mesh.ARRAY_NORMAL] = normals
-		arr[Mesh.ARRAY_COLOR] = colors
-		arr[Mesh.ARRAY_INDEX] = idx
-		mesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arr)
-		mesh.surface_set_material(mesh.get_surface_count() - 1, mat)
-
-
 ## El color de `options` que més es distingeix de `base` (ribets i franges).
 static func contrast(base: Color, options: Array[Color]) -> Color:
 	var best := options[0]
@@ -172,7 +86,7 @@ static func leg_guard(side: float, pad: Color, accent: Color) -> ArrayMesh:
 		var groove := 0.0
 		for g in GROOVES:
 			groove = maxf(groove, exp(-pow((y - g) / 0.008, 2.0)))
-		var k := _round_ends(y - PAD_BOT, PAD_TOP - y, PAD_ROUND_BOT, PAD_ROUND_TOP)
+		var k := MeshPart.round_ends(y - PAD_BOT, PAD_TOP - y, PAD_ROUND_BOT, PAD_ROUND_TOP)
 		var center := Vector3(side * PAD_X, y, shin + 0.006)
 		var ring := PackedVector3Array()
 		var rc := PackedColorArray()
@@ -181,8 +95,8 @@ static func leg_guard(side: float, pad: Color, accent: Color) -> ArrayMesh:
 			var s := sin(th)
 			var c := cos(th)
 			var front := maxf(0.0, c)
-			var dz := depth * _spow(c, 0.66) - 0.006 * groove * sqrt(front)
-			ring.append(center + Vector3(half_w * _spow(s, 0.66), 0.0, dz) * k)
+			var dz := depth * MeshPart.spow(c, 0.66) - 0.006 * groove * sqrt(front)
+			ring.append(center + Vector3(half_w * MeshPart.spow(s, 0.66), 0.0, dz) * k)
 			var col := pad.darkened(0.3 * groove * front)
 			if c < -0.5:
 				col = LINING
@@ -192,10 +106,10 @@ static func leg_guard(side: float, pad: Color, accent: Color) -> ArrayMesh:
 		rows.append(ring)
 		cols.append(rc)
 		refs.append(center)
-	var part := Part.new()
+	var part := MeshPart.new()
 	part.grid(rows, cols, true, refs)
 	var mesh := ArrayMesh.new()
-	part.add_to(mesh, _material(0.5))
+	part.add_to(mesh, MeshPart.material(0.5))
 	_cache[key] = mesh
 	return mesh
 
@@ -217,18 +131,18 @@ static func kicker(side: float, pad: Color, accent: Color) -> ArrayMesh:
 		var d0 := z - KICK_Z0
 		var d1 := KICK_Z1 - z
 		# La sola puja una mica a la punta; el damunt hi baixa fent una volta rodona.
-		var bot := -0.008 + 0.022 * (1.0 - _round_ends(d0, d1, 0.02, 0.04))
+		var bot := -0.008 + 0.022 * (1.0 - MeshPart.round_ends(d0, d1, 0.02, 0.04))
 		var height := lerpf(0.145, 0.09, smoothstep(0.2, 0.8, t))
-		var top := bot + height * _round_ends(d0, d1, 0.035, 0.08, 2.5)
-		var half_w := lerpf(0.066, 0.06, t) * _round_ends(d0, d1, 0.035, 0.06, 2.5)
+		var top := bot + height * MeshPart.round_ends(d0, d1, 0.035, 0.08, 2.5)
+		var half_w := lerpf(0.066, 0.06, t) * MeshPart.round_ends(d0, d1, 0.035, 0.06, 2.5)
 		var center := Vector3(side * KICK_X, (top + bot) * 0.5, z)
 		var ring := PackedVector3Array()
 		var rc := PackedColorArray()
 		for j in around:
 			var th := TAU * j / around
 			var c := cos(th)
-			var dy := (top - bot) * 0.5 * _spow(c, 0.6 if c >= 0.0 else 0.3)
-			ring.append(center + Vector3(half_w * _spow(sin(th), 0.6), dy, 0.0))
+			var dy := (top - bot) * 0.5 * MeshPart.spow(c, 0.6 if c >= 0.0 else 0.3)
+			ring.append(center + Vector3(half_w * MeshPart.spow(sin(th), 0.6), dy, 0.0))
 			var col := pad
 			if c < -0.85:
 				col = pad.darkened(0.45)
@@ -238,10 +152,10 @@ static func kicker(side: float, pad: Color, accent: Color) -> ArrayMesh:
 		rows.append(ring)
 		cols.append(rc)
 		refs.append(center)
-	var part := Part.new()
+	var part := MeshPart.new()
 	part.grid(rows, cols, true, refs)
 	var mesh := ArrayMesh.new()
-	part.add_to(mesh, _material(0.55))
+	part.add_to(mesh, MeshPart.material(0.55))
 	_cache[key] = mesh
 	return mesh
 
@@ -257,11 +171,11 @@ static func helmet(shell: Color, trim: Color, stripe: Color) -> ArrayMesh:
 	if _cache.has(key):
 		return _cache[key]
 	var mesh := ArrayMesh.new()
-	var part := Part.new()
+	var part := MeshPart.new()
 	_shell(part, shell, trim)
 	_stripe(part, stripe)
-	part.add_to(mesh, _material(0.28))
-	var cage := Part.new()
+	part.add_to(mesh, MeshPart.material(0.28))
+	var cage := MeshPart.new()
 	for v in CAGE_V:
 		var path := PackedVector3Array()
 		for k in 19:
@@ -277,16 +191,16 @@ static func helmet(shell: Color, trim: Color, stripe: Color) -> ArrayMesh:
 	metal.metallic = 0.6
 	metal.roughness = 0.35
 	cage.add_to(mesh, metal)
-	var throat := Part.new()
+	var throat := MeshPart.new()
 	_throat_guard(throat, trim)
-	var plastic := _material(0.35)
+	var plastic := MeshPart.material(0.35)
 	plastic.cull_mode = BaseMaterial3D.CULL_DISABLED
 	throat.add_to(mesh, plastic)
 	_cache[key] = mesh
 	return mesh
 
 
-static func _shell(part: Part, shell: Color, trim: Color) -> void:
+static func _shell(part: MeshPart, shell: Color, trim: Color) -> void:
 	var cols_n := 48
 	var top_rows := 14
 	var outer: Array[PackedVector3Array] = []
@@ -328,7 +242,7 @@ static func _shell(part: Part, shell: Color, trim: Color) -> void:
 
 
 ## Franja pel mig de la closca, del front al clatell, enganxada a la superfície.
-static func _stripe(part: Part, color: Color) -> void:
+static func _stripe(part: MeshPart, color: Color) -> void:
 	var rows: Array[PackedVector3Array] = []
 	var cols: Array[PackedColorArray] = []
 	var refs := PackedVector3Array()
@@ -379,7 +293,7 @@ static func _cage_point(phi: float, v: float) -> Vector3:
 
 
 ## Protector de coll: una placa corbada que penja de sota la reixa, amb la punta rodona.
-static func _throat_guard(part: Part, color: Color) -> void:
+static func _throat_guard(part: MeshPart, color: Color) -> void:
 	var rows: Array[PackedVector3Array] = []
 	var cols: Array[PackedColorArray] = []
 	var refs := PackedVector3Array()
@@ -416,49 +330,21 @@ static func glove(half: Vector3, color: Color) -> ArrayMesh:
 		var rc := PackedColorArray()
 		for j in 20:
 			var th := TAU * j / 20.0
-			var ce := _spow(cos(el), 0.4)
+			var ce := MeshPart.spow(cos(el), 0.4)
 			ring.append(
 				Vector3(
-					half.x * ce * _spow(sin(th), 0.4),
-					half.y * _spow(sin(el), 0.4),
-					half.z * ce * _spow(cos(th), 0.4)
+					half.x * ce * MeshPart.spow(sin(th), 0.4),
+					half.y * MeshPart.spow(sin(el), 0.4),
+					half.z * ce * MeshPart.spow(cos(th), 0.4)
 				)
 			)
 			rc.append(color.darkened(0.12) if i < 3 else color)
 		rows.append(ring)
 		cols.append(rc)
 		refs.append(Vector3.ZERO)
-	var part := Part.new()
+	var part := MeshPart.new()
 	part.grid(rows, cols, true, refs)
 	var mesh := ArrayMesh.new()
-	part.add_to(mesh, _material(0.55))
+	part.add_to(mesh, MeshPart.material(0.55))
 	_cache[key] = mesh
 	return mesh
-
-
-# --- Ajudes -----------------------------------------------------------------------------
-
-
-## Escala de la secció a prop de les puntes perquè acabin rodones: d0 i d1 són les
-## distàncies a cada punta i r0 i r1 els radis de la volta. Amb e > 2, la punta és més
-## xata (superel·lipse).
-static func _round_ends(d0: float, d1: float, r0: float, r1: float, e := 2.0) -> float:
-	var u := 0.0
-	if d0 < r0:
-		u = 1.0 - d0 / r0
-	elif d1 < r1:
-		u = 1.0 - d1 / r1
-	return pow(maxf(0.0, 1.0 - pow(u, e)), 1.0 / e)
-
-
-## Potència amb signe: superel·lipses (seccions de cantells rodons).
-static func _spow(v: float, e: float) -> float:
-	return signf(v) * pow(absf(v), e)
-
-
-static func _material(roughness: float) -> StandardMaterial3D:
-	var m := StandardMaterial3D.new()
-	m.vertex_color_use_as_albedo = true
-	m.vertex_color_is_srgb = true
-	m.roughness = roughness
-	return m
