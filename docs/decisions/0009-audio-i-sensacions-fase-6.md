@@ -75,7 +75,9 @@ La web sintetitza tots els sons amb WebAudio (`SFX`, línies 1052–1089): sorol
 - Puja quan la pilota s'acosta a una porteria i als córners curts.
 - Salta amb els gols, les aturades i el pal, i torna a baixar sol en uns 4 s, com `SFX.crowd()`.
 - Amb la pausa baixa 10 dB.
-- Provant el joc, l'usuari el va trobar massa fort. S'ha baixat 8 dB, i els crits i aplaudiments, 5–6 dB.
+- Provant el joc, l'usuari el va trobar massa fort dues vegades.
+  - En total, el murmuri ha baixat 16 dB i els crits i aplaudiments, 10–11 dB.
+  - Qui el vulgui més fort el pot pujar a Opcions › So › Ambient.
 - Al menú, el partit de demostració sona 10 dB més fluix.
 
 **Altres detalls:**

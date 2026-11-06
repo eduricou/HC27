@@ -2,11 +2,9 @@
 ## l'Iluro al carrer Galícia de Mataró (foto aèria; docs/decisions/0006), no l'estadi de
 ## la web: no hi ha grada, només tanques als laterals.
 ##   −y (oest, al fons de la vista TV): passeig amb les banquetes, tanca, arbres i el carrer
-##       Galícia amb cotxes i cases.
+##       Galícia amb cotxes. Més enllà, cap edifici: herba seca i, lluny, muntanyes.
 ##   +y (est, on és la càmera TV): tanca, bardissa i talús amb la carretera a dalt.
 ##   +x (nord): les casetes del club. −x (sud): la xarxa alta i un camp de matolls.
-## La ciutat del fons (hospital i blocs) és la de glInit() a la web, amb el mateix
-## generador (Park–Miller amb llavor 11).
 class_name StadiumLayout
 extends RefCounted
 
@@ -40,6 +38,7 @@ const TREE_Y := -HW - 11.3
 const SIDEWALK_Y := -HW - 12.5
 const STREET_Y0 := -HW - 15.0
 const STREET_Y1 := -HW - 24.0
+## Final de la vorera de l'altra banda del carrer (abans hi havia cases; ara, herba).
 const HOUSES_Y := -HW - 27.0
 ## Rotonda al nord-oest.
 const ROUNDABOUT := Vector3(HL + 16.0, -HW - 19.5, 9.0)
@@ -84,36 +83,8 @@ const HUTS := [
 ## Zona pavimentada de les casetes.
 const HUTS_AREA := Rect2(HL + 8.0, -HW - 10.0, 18.0, 37.0)
 
-## Hospital del fons.
-const HOSPITAL := Rect2(30.0, -175.0, 75.0, 25.0)
-const HOSPITAL_H := 26.0
-
 ## Persones dretes al passeig.
 const SPECTATORS := 34
-
-
-## Generador de la web: seed = seed·16807 mod (2³¹ − 1). ref: rnd() de glInit()
-class ParkMiller:
-	var seed := 11
-
-	func next() -> float:
-		seed = (seed * 16807) % 2147483647
-		return seed / 2147483647.0
-
-
-## Blocs de pisos del fons: [[Rect2(x0, y0, w, d), h], ...]. ref: línies 1521–1523
-static func city_blocks(rnd: ParkMiller) -> Array:
-	var out := []
-	for i in 26:
-		var x0 := -260.0 + rnd.next() * 520.0
-		var y0 := -170.0 - rnd.next() * 110.0
-		var w := 16.0 + rnd.next() * 22.0
-		var d := 10.0 + rnd.next() * 12.0
-		var h := 9.0 + rnd.next() * 20.0
-		if x0 > 15.0 and x0 < 120.0 and y0 > -190.0:
-			continue
-		out.append([Rect2(x0, y0 - d, w, d), h])
-	return out
 
 
 ## Altura del terreny a l'est (talús i carretera) a la coordenada y.

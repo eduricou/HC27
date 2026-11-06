@@ -1,26 +1,12 @@
 # Proves del camp (fase 3) que no necessiten pantalla: la disposició (el camp real de
-# l'Iluro, amb la ciutat del fons de la web), els efectes que depenen del partit, els
-# presets de qualitat i la construcció.
+# l'Iluro, sense edificis al voltant), els efectes que depenen del partit, els presets de
+# qualitat i la construcció.
 extends GdUnitTestSuite
 
 const HL := Constants.HL
 const GHW := Constants.GHW
 
 # --- Disposició ----------------------------------------------------------------------
-
-
-## Valors de referència calculats amb el codi de glInit() de la web (generador amb
-## llavor 11): 26 blocs de pisos.
-func test_ciutat_com_la_web() -> void:
-	var rnd := StadiumLayout.ParkMiller.new()
-	var blocks := StadiumLayout.city_blocks(rnd)
-	assert_int(blocks.size()).is_equal(26)
-	var first: Rect2 = blocks[0][0]
-	assert_float(first.position.x).is_equal_approx(-259.95523, 1e-3)
-	assert_float(first.position.y).is_equal_approx(-229.70254, 1e-3)
-	assert_float(first.size.x).is_equal_approx(22.85649, 1e-3)
-	assert_float(first.size.y).is_equal_approx(10.54182, 1e-3)
-	assert_float(blocks[0][1]).is_equal_approx(26.20879, 1e-3)
 
 
 func test_talus_i_carretera_de_l_est() -> void:
@@ -197,15 +183,17 @@ func test_el_camp_es_construeix_sencer() -> void:
 		"Public",
 		"CasetesClub",
 		"Carrer",
-		"Ciutat",
 		"Vegetacio",
 		"PorteriaEsquerra",
 		"PorteriaDreta",
 		"PorteriesRecanvi",
 	]:
 		assert_object(st.get_node_or_null(n)).override_failure_message(n).is_not_null()
-	# No hi ha grada.
+	# No hi ha grada ni edificis al voltant (només les casetes del club).
 	assert_object(st.get_node_or_null("Grada")).is_null()
+	assert_object(st.get_node_or_null("Ciutat")).is_null()
+	for n in ["Cases", "Teulades", "Pisos", "Hospital"]:
+		assert_object(st.find_child(n, true, false)).override_failure_message(n).is_null()
 	var spots := st.find_children("*", "SpotLight3D", true, false)
 	assert_int(spots.size()).is_equal(StadiumLayout.POLES.size())
 	for sp: SpotLight3D in spots:

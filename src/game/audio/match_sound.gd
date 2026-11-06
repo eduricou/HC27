@@ -42,8 +42,8 @@ const WHISTLE_SHORT := 0.41
 const WHISTLE_LONG := 0.98
 const WHISTLE_DB := -12.0
 ## Murmuri del públic (dB) en calma i amb la màxima emoció.
-const CROWD_DB: Array[float] = [-18.0, -22.0]
-const CROWD_RANGE := 7.0
+const CROWD_DB: Array[float] = [-26.0, -30.0]
+const CROWD_RANGE := 6.0
 ## Guany de tota la barreja del partit. Al gol (el moment més fort), el pic queda a uns
 ## −4 dBFS i el limitador del Master no hi ha de fer res (tools/audio_check.sh,
 ## docs/decisions/0009).
@@ -208,7 +208,7 @@ func play_event(s: MatchState, e: Dictionary) -> void:
 			_hit(&"sfx/tackle", pos, -9.0, SfxBank.randf_range(1.2, 1.45))
 		&"save":
 			_hit(&"sfx/pads", at, -4.0, SfxBank.randf_range(0.9, 1.1))
-			_react(&"crowd/applause", -18.0)
+			_react(&"crowd/applause", -23.0)
 			_bump(0.5)
 		&"post":
 			_hit(&"sfx/post", at, -3.0, SfxBank.randf_range(0.95, 1.05))
@@ -220,17 +220,17 @@ func play_event(s: MatchState, e: Dictionary) -> void:
 			# L'Iluro juga a casa: els seus gols, crits i aplaudiments; els del Polo, uns
 			# quants aplaudiments dels seus.
 			if int(e.get("team", 0)) == 0:
-				_react(&"crowd/cheer", -9.0)
-				_react(&"crowd/applause", -13.0)
+				_react(&"crowd/cheer", -14.0)
+				_react(&"crowd/applause", -18.0)
 			else:
-				_react(&"crowd/applause", -17.0)
+				_react(&"crowd/applause", -22.0)
 			_bump(1.0)
 		&"whistle":
 			whistle(float(e.get("strength", 0.3)), int(e.get("count", 1)))
 		&"intro_end":
-			_react(&"crowd/applause", -16.0)
+			_react(&"crowd/applause", -21.0)
 		&"quarter_end":
-			_react(&"crowd/applause", -14.0)
+			_react(&"crowd/applause", -19.0)
 		&"pc":
 			_bump(0.6)
 		&"switch":

@@ -1,9 +1,10 @@
 ## El camp de l'Iluro HC al carrer Galícia de Mataró, com el real (docs/decisions/0006):
 ## gespa amb el voral de formigó, el passeig amb les banquetes i el públic dret, tanques,
 ## la bardissa i el talús de l'est, sis torres de llum, les casetes del club, el carrer
-## amb cotxes i cases, i la ciutat al fons. També porta la llum de tarda (sol amb ombres)
-## o de nit (focus), el cel i l'entorn. Es construeix per codi amb StadiumLayout.
-## ref: línies 1249–1579 de la web (gespa, cel, ciutat, pins) i drawGlows()
+## amb cotxes, i camps i muntanyes al fons, sense edificis (com el real, segons l'usuari).
+## També porta la llum de tarda (sol amb ombres) o de nit (focus), el cel i l'entorn. Es
+## construeix per codi amb StadiumLayout.
+## ref: línies 1249–1579 de la web (gespa, cel, pins) i drawGlows()
 class_name Stadium
 extends Node3D
 
@@ -22,8 +23,6 @@ const HEDGE_SHADER := preload("res://shaders/hedge.gdshader")
 
 const STEEL := Color("5d636a")
 const CONCRETE := Color("a3a29b")
-const FLAT_ROOF := Color("8f8f88")
-const TILE_ROOF := Color("a8553f")
 const BENCH_ROOF := Color("8e2a22")
 const FENCE_GREEN := Color(0.2, 0.3, 0.24, 1.0)
 const CAR_COLORS: Array[Color] = [
@@ -51,7 +50,7 @@ const NIGHT := {
 	"spot_energy": 22.0,
 	"spot_color": Color(1.0, 0.97, 0.9),
 	# De nit el cel és gairebé negre: la llum ambient ve sobretot d'un color fix (el
-	# rebot dels focus i la ciutat), perquè els arbres i les cases no siguin negres.
+	# rebot dels focus), perquè els arbres i les casetes no siguin negres.
 	"ambient": 1.0,
 	"sky_ambient": 0.3,
 	"ambient_color": Color(0.07, 0.085, 0.12),
@@ -102,7 +101,6 @@ func build() -> void:
 	add_child(_spectators())
 	add_child(_huts())
 	add_child(_street())
-	add_child(_city())
 	add_child(_vegetation())
 	for c in get_children():
 		_set_layers(c)
@@ -646,7 +644,7 @@ func _spectators() -> MultiMeshInstance3D:
 	return mmi
 
 
-# --- Casetes del club, carrer i ciutat ------------------------------------------------------
+# --- Casetes del club i carrer ------------------------------------------------------
 
 
 ## Casetes del club al nord, darrere la porteria. ref: makeClubhouse() per al rètol
@@ -674,29 +672,13 @@ func _huts() -> Node3D:
 	return root
 
 
-## Carrer Galícia: cases amb teulada de teula, cotxes aparcats, fanals i arbres.
+## Carrer Galícia: cotxes aparcats, fanals i arbres. A l'altra banda no hi ha edificis:
+## herba seca i matolls fins a les muntanyes del fons (el cel).
 func _street() -> Node3D:
 	var root := Node3D.new()
 	root.name = "Carrer"
 	var rng := RandomNumberGenerator.new()
 	rng.seed = 41
-	# Cases de dues o tres plantes a l'altra banda del carrer.
-	var walls := MeshBuilder.new()
-	var roofs := MeshBuilder.new()
-	var x := -85.0
-	while x < 44.0:
-		var w := rng.randf_range(8.0, 12.0)
-		var d := rng.randf_range(9.0, 11.5)
-		var h := 6.2 if rng.randf() < 0.75 else 9.0
-		var y1 := L.HOUSES_Y
-		var y0 := y1 - d
-		walls.box(x, x + w, y0, y1, 0.0, h, 24.0, h / 30.0, false)
-		_gable(roofs, x - 0.3, x + w + 0.3, y0 - 0.4, y1 + 0.4, h, 2.2)
-		x += w + rng.randf_range(0.8, 3.0)
-	root.add_child(
-		walls.to_instance("Cases", _facade_mat("facade_flats", Vector2(8.0, 10.0), 0.45))
-	)
-	root.add_child(roofs.to_instance("Teulades", _mat(TILE_ROOF, 0.8)))
 	root.add_child(_cars(rng))
 	# Fanals a la vorera.
 	var poles := MeshBuilder.new()
@@ -779,71 +761,6 @@ func _cars(rng: RandomNumberGenerator) -> Node3D:
 	cmi.material_override = _mat(Color("1a2028"), 0.15)
 	root.add_child(cmi)
 	return root
-
-
-## Teulada a dues aigües amb el carener paral·lel a x.
-static func _gable(
-	b: MeshBuilder, x0: float, x1: float, y0: float, y1: float, z: float, rise: float
-) -> void:
-	var ym := (y0 + y1) * 0.5
-	var zt := z + rise
-	b.quad(
-		Vector3(x0, y1, z),
-		Vector3(x1, y1, z),
-		Vector3(x1, ym, zt),
-		Vector3(x0, ym, zt),
-		Vector3(0, 1, 1)
-	)
-	b.quad(
-		Vector3(x1, y0, z),
-		Vector3(x0, y0, z),
-		Vector3(x0, ym, zt),
-		Vector3(x1, ym, zt),
-		Vector3(0, -1, 1)
-	)
-	for s: float in [-1.0, 1.0]:
-		var xx := x0 if s < 0.0 else x1
-		var pts: Array[Vector3] = [Vector3(xx, y0, z), Vector3(xx, y1, z), Vector3(xx, ym, zt)]
-		b.polygon(pts, Vector3(s, 0, 0))
-
-
-## Hospital i blocs de pisos al fons. ref: línies 1520–1524
-func _city() -> Node3D:
-	var root := Node3D.new()
-	root.name = "Ciutat"
-	var hosp := MeshBuilder.new()
-	var roofs := MeshBuilder.new()
-	var h := L.HOSPITAL
-	var hh := L.HOSPITAL_H
-	hosp.box(h.position.x, h.end.x, h.position.y, h.end.y, 0.0, hh, 24.0, hh / 30.0, false)
-	_flat_roof(roofs, h, hh)
-	root.add_child(
-		hosp.to_instance(
-			"Hospital", _facade_mat("facade_hospital", Vector2(8.0, 10.0), 0.55), false
-		)
-	)
-	var flats := MeshBuilder.new()
-	var rnd := StadiumLayout.ParkMiller.new()
-	for blk: Array in L.city_blocks(rnd):
-		var b: Rect2 = blk[0]
-		var bh: float = blk[1]
-		flats.box(b.position.x, b.end.x, b.position.y, b.end.y, 0.0, bh, 24.0, bh / 30.0, false)
-		_flat_roof(roofs, b, bh)
-	root.add_child(
-		flats.to_instance("Pisos", _facade_mat("facade_flats", Vector2(8.0, 10.0), 0.62), false)
-	)
-	root.add_child(roofs.to_instance("Terrats", _mat(FLAT_ROOF, 0.9), false))
-	return root
-
-
-static func _flat_roof(b: MeshBuilder, r: Rect2, z: float) -> void:
-	b.quad(
-		Vector3(r.position.x, r.end.y, z),
-		Vector3(r.end.x, r.end.y, z),
-		Vector3(r.end.x, r.position.y, z),
-		Vector3(r.position.x, r.position.y, z),
-		Vector3(0, 0, 1)
-	)
 
 
 ## Pins pinyers (quads creuats com a la web, amb la copa plana per veure'ls des de dalt) i

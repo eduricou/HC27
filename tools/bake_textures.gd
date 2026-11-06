@@ -69,12 +69,6 @@ func _run() -> void:
 	await _bake("stadium/people", Vector2i(CELL.x * ATLAS.x, CELL.y * ATLAS.y), _draw_people, true)
 	await _bake("stadium/led", Vector2i(4096, 64), _draw_led)
 	await _bake("stadium/clubhouse", Vector2i(1024, 256), _draw_clubhouse)
-	await _bake(
-		"stadium/facade_hospital", Vector2i(256, 256), _draw_facade.bind(Color("e9e7e0"), true)
-	)
-	await _bake(
-		"stadium/facade_flats", Vector2i(256, 256), _draw_facade.bind(Color("c8b699"), false)
-	)
 	await _bake("stadium/pine", Vector2i(256, 256), _draw_pine, true)
 	await _bake("stadium/pine_top", Vector2i(128, 128), _draw_pine_top, true)
 	await _bake("stadium/tree", Vector2i(256, 256), _draw_tree, true)
@@ -302,18 +296,6 @@ func _draw_clubhouse(c: CanvasItem) -> void:
 	c.draw_rect(Rect2(472, 164, 80, 92), Color("5b4a3c"))
 	c.draw_rect(Rect2(44, 176, 180, 52), Color("2f55e0"))
 	c.draw_rect(Rect2(800, 176, 180, 52), Color("2f55e0"))
-
-
-## Façana d'edifici amb 8x10 finestres (blau = vidre; de nit se n'encenen algunes).
-## ref: makeFacade()
-func _draw_facade(c: CanvasItem, base: Color, big: bool) -> void:
-	c.draw_rect(Rect2(0, 0, 256, 256), base)
-	for j in 10:
-		for i in 8:
-			var size := Vector2(22, 15) if big else Vector2(18, 13)
-			c.draw_rect(Rect2(Vector2(6 + i * 32, 8 + j * 25.6), size), Color("2f55e0"))
-	for j in 10:
-		c.draw_rect(Rect2(0, j * 25.6, 256, 2), Color(0, 0, 0, 0.08))
 
 
 # --- Pi pinyer i focus ----------------------------------------------------------------

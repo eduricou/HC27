@@ -20,13 +20,18 @@ Les mides del joc no canvien. Orientació:
 
 | Costat | Simulació | Què hi ha |
 |---|---|---|
-| Fons de la vista TV (oest) | −y | El passeig de formigó, amb les banquetes vermelles a la línia del mig i la taula de l'àrbitre auxiliar entre totes dues. Hi ha unes 34 persones dretes mirant el partit. Darrere, el muret amb la reixa de 2 m i les pancartes, la franja d'arbres, el carrer Galícia amb cotxes aparcats i fanals, i les cases de 2 o 3 plantes amb teulada de teula. |
+| Fons de la vista TV (oest) | −y | El passeig de formigó, amb les banquetes vermelles a la línia del mig i la taula de l'àrbitre auxiliar entre totes dues. Hi ha unes 34 persones dretes mirant el partit. Darrere, el muret amb la reixa de 2 m i les pancartes, la franja d'arbres, el carrer Galícia amb cotxes aparcats i fanals. *(Fase 6: a l'altra banda del carrer hi havia cases de 2 o 3 plantes; s'han tret, vegeu més avall.)* |
 | Costat de la càmera TV (est) | +y | La reixa baixa i la bardissa de 3 m. Darrere, el talús, amb la carretera a dalt i una bionda. La càmera TV queda a sobre de la carretera. |
 | Dreta de la vista TV (nord) | +x | Les casetes del club. La gran té el rètol ILURO HC. Hi ha una xarxa de 5 m darrere la porteria i una rotonda al nord-oest. |
 | Esquerra de la vista TV (sud) | −x | La xarxa alta (7 m), dues porteries de recanvi i un camp de matolls amb pins. |
 
 - La gespa és més oliva, i la franja de fora del terreny de joc és de color llima, com a la foto.
-- La ciutat del fons (hospital i blocs de pisos) es manté, amb el mateix generador que la web.
+- ~~La ciutat del fons (hospital i blocs de pisos) es manté, amb el mateix generador que la web.~~
+- **Revisió (fase 6, 6/11/2026):** l'usuari, que coneix el camp, diu que al voltant no hi ha edificis i que només s'hi veuen muntanyes de lluny.
+  - S'han tret les cases del carrer, l'hospital i els blocs de pisos, i les seves textures de façana.
+  - Al terra hi ha herba seca i matolls.
+  - Al cel (`shaders/sky.gdshader`) hi ha dues carenes, una de verda a davant i una de blavosa al fons, més altes darrere de les banquetes i sense llums de nit.
+  - Es mantenen les casetes del club, el carrer amb cotxes, els fanals i els arbres.
 - La llum del sol continua sent la de la web. Ve del sud-oest, de darrere el passeig: és una llum de tarda.
 
 ### 2. Torres de llum
