@@ -7,8 +7,8 @@ Regles, constants i toleràncies: docs/regles.md. Decisions: docs/decisions/.
 
 ## Estat
 - Fases 0 (preparació), 1 (simulació headless), 2 (primer jugable amb caixes grises),
-  3 (estadi i gespa) i 4 (jugadors amb esquelet i animacions, 6/11/2026) fetes.
-  Següent: fase 5 (càmeres, repeticions, HUD i menús), pla §9 i §10.
+  3 (estadi i gespa), 4 (jugadors amb esquelet i animacions) i 5 (càmeres, repeticions,
+  HUD i menús, 6/11/2026) fetes. Següent: fase 6 (àudio i sensacions), pla §9 i §10.
 - La referència és la versió de 2.029 línies, no la «v4» del pla original (docs/decisions/0001).
 - La simulació de src/sim/ reprodueix la web pas a pas amb la mateixa llavor
   (docs/decisions/0002). Un partit triga ~10 s en un procés i ens hi quedem: el criteri és
@@ -33,7 +33,8 @@ Regles, constants i toleràncies: docs/regles.md. Decisions: docs/decisions/.
 - Comprovar un script: `"$GODOT" --headless --path . --check-only -s <script.gd>`
 - Reimportar recursos: `"$GODOT" --headless --path . --import`
 - Captures per revisar visualment: `bash tools/shot.sh <escenari> [fotogrames]` → PNG a build/shots/
-  Escenaris (src/game/main.gd): menu, intro, match, human, pc, pause, break, full.
+  Escenaris (src/game/main.gd): menu, options, intro, match, human, pc, goal (gol i
+  repetició), pause, break, full. Els escenaris no llegeixen ni desen user://opcions.cfg.
 - Comparar amb la web des dels angles fixos de tools/views.json:
   `node tools/shot_web.mjs [angles] [hores]` → build/shots/web/ ·
   `bash tools/shot_views.sh [angles] [hores] [qualitat]` → build/shots/godot/ (<angle>_<tarda|nit>.png)
@@ -62,9 +63,21 @@ Regles, constants i toleràncies: docs/regles.md. Decisions: docs/decisions/.
   Engine.get_physics_interpolation_fraction().
 - src/game/ llegeix l'estat de la simulació i l'aplica als nodes; no canvia regles.
   MatchRunner fa els passos (pausa, descansos, final), MatchView interpola entre passos,
-  CameraRig és la càmera TV i HumanController omple SimInput. Accions d'entrada:
-  InputActions, registrades en temps d'execució. HUD i menú: src/ui/, construïts des del codi
-  fins a la fase 5 (docs/decisions/0004).
+  CameraRig és la càmera i HumanController omple SimInput. Accions d'entrada:
+  InputActions, registrades en temps d'execució i reassignables (hi afegeix A i B del
+  comandament a ui_accept i ui_cancel, que Godot no porta).
+- Càmeres (CameraRig, fase 5): TV/àmplia, presentació, gol, repetició amb tres angles i
+  córner curt darrere de la porteria. Amb aquesta, l'entrada gira amb la càmera
+  (MatchRunner.camera_angle → HumanController.angle, que només canvia amb la palanca deixada
+  anar); amb la TV el gir és 0. Durant la presentació i la repetició, MatchRunner llegeix
+  l'entrada també en CPU contra CPU (per saltar-les; acció skip = clic o Retorn → tap_e).
+- Interfície (src/ui/, docs/decisions/0008): construïda des del codi, sense .tscn. UiKit té
+  la paleta, les lletres (assets/fonts, OFL), els escuts (assets/crests/*.svg) i el tema.
+  Pantalles: Hud (amb PauseScreen i BreakScreen), MainMenu, OptionsScreen. Opcions i
+  darreres eleccions del menú: GameSettings → user://opcions.cfg (ConfigFile). Busos
+  d'àudio: AudioBuses. Tot s'ha de poder fer amb teclat, ratolí i comandament (hi ha proves).
+  En crear controls a _ready() (ja dins de l'arbre), fes servir
+  set_anchors_and_offsets_preset(): set_anchors_preset() hi deixa la mida 0.
 - Coords.to_view() és una reflexió: les malles generades s'han de fer amb MeshBuilder
   (src/game/stadium/mesh_builder.gd), que orienta cada triangle segons la normal, o amb
   `cull_mode = CULL_DISABLED`; si no, les cares no es veuen.
@@ -82,8 +95,9 @@ Regles, constants i toleràncies: docs/regles.md. Decisions: docs/decisions/.
   i IK de cames i braços. La pala del pal és sempre al punt de control de la simulació
   (stickPt/stickWorld) i les mans hi van amb IK. Les accions (celebrar, protestar, estirada,
   entrada) les disparen els esdeveniments a MatchView.on_events.
-- Presets de qualitat: src/game/quality.gd (`--quality=baixa|mitjana|alta|ultra`, per defecte
-  alta). Arguments del joc: `--time=tarda|nit` (per defecte nit, com la web). Decisions de la
+- Presets de qualitat: src/game/quality.gd (opcions o `--quality=baixa|mitjana|alta|ultra`,
+  que hi mana; per defecte alta). Escala FSR 2.2 a les opcions. Arguments del joc:
+  `--time=tarda|nit` (per defecte, el de les opcions: nit, com la web). Decisions de la
   fase 3: docs/decisions/0005 i 0006.
 - Escenaris de revisió: `views` (angles de tools/views.json; també segueixen jugadors amb
   "follow"; `--action=celebrate` fa fer l'acció a tothom) i `follow` (càmera que segueix un

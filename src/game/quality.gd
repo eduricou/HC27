@@ -1,7 +1,7 @@
 ## Presets de qualitat gràfica. La fase 3 en fa servir dos per als criteris d'acceptació
 ## (Baixa: 60 fps a 1080p amb una gràfica integrada; Alta: 144 fps a 1440p amb una GPU
-## mitjana). La fase 7 els ajustarà i la fase 5 els posarà al menú d'opcions.
-## Es tria amb `-- --quality=<nom>`; per defecte, alta.
+## mitjana). La fase 7 els ajustarà. Es trien al menú d'opcions (GameSettings) o amb
+## `-- --quality=<nom>`, que mana sobre les opcions; per defecte, alta.
 class_name Quality
 extends RefCounted
 
@@ -108,12 +108,22 @@ static func override(q: Dictionary, spec: String) -> void:
 
 ## Aplica el preset al viewport i al servidor de render. La part de l'estadi (llums i
 ## entorn) la fa Stadium.apply_quality().
+## Amb q["fsr"] < 1 (opcions), el 3D es dibuixa a aquesta escala i FSR 2.2 l'escala i el
+## suavitza (substitueix l'MSAA i l'FXAA del preset).
 static func apply_viewport(q: Dictionary, vp: Viewport) -> void:
-	vp.msaa_3d = q["msaa"]
-	vp.screen_space_aa = (
-		Viewport.SCREEN_SPACE_AA_FXAA if q["fxaa"] else Viewport.SCREEN_SPACE_AA_DISABLED
-	)
-	vp.scaling_3d_scale = q["scale"]
+	var fsr: float = q.get("fsr", 1.0)
+	if fsr < 0.999:
+		vp.scaling_3d_mode = Viewport.SCALING_3D_MODE_FSR2
+		vp.scaling_3d_scale = fsr
+		vp.msaa_3d = Viewport.MSAA_DISABLED
+		vp.screen_space_aa = Viewport.SCREEN_SPACE_AA_DISABLED
+	else:
+		vp.scaling_3d_mode = Viewport.SCALING_3D_MODE_BILINEAR
+		vp.scaling_3d_scale = q["scale"]
+		vp.msaa_3d = q["msaa"]
+		vp.screen_space_aa = (
+			Viewport.SCREEN_SPACE_AA_FXAA if q["fxaa"] else Viewport.SCREEN_SPACE_AA_DISABLED
+		)
 	vp.positional_shadow_atlas_size = q["spot_atlas"]
 	RenderingServer.directional_shadow_atlas_set_size(q["sun_size"], true)
 	RenderingServer.directional_soft_shadow_filter_set_quality(q["soft"])

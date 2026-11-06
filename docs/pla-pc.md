@@ -576,6 +576,19 @@ Les durades són orientatives i suposen una sola persona a temps parcial.
 - Les opcions es conserven en reiniciar el joc.
 - La repetició es pot saltar.
 
+**Fet (6/11/2026).**
+- **Càmeres:** TV (i «Àmplia»), presentació amb vol des de l'aire, primer pla del golejador i repetició a mitja velocitat amb tres angles (alta per darrere de la jugada, arran de gespa des de la banda i darrere de la porteria).
+- **Córner curt:** càmera nova darrere de la porteria. Amb aquesta càmera, els controls giren amb ella.
+- **HUD:** com el de la web, amb les seves lletres (OFL) i els escuts en SVG: marcador, minimapa, indicador del jugador amb resistència i potència, rètols, cortineta, franges de cinema, i descans i final amb estadístiques.
+- **Menú:** placa del partit amb les equipacions en 3D, costat, dificultat, durada, hora i càmera.
+- **Opcions:** pantalla, FSR 2.2, so i tecles, desades a `user://opcions.cfg`.
+- **Acceptació:** ho comproven les proves (`tests/game/test_ui.gd`): navegació amb teclat, ratolí i comandament, opcions que es conserven, i saltar la repetició també en CPU contra CPU.
+- **Gamepad als menús:** Godot 4.7 no posava el comandament a `ui_accept` ni a `ui_cancel`. Ara s'hi posa (A i B).
+- **Rendiment:** el HUD costa menys de 0,1 ms per fotograma, i els fps són els de la fase 4.
+- **Pendent:** provar a mà el comandament físic i els canvis de mode de finestra. Els volums es podran sentir a la fase 6.
+- La interfície continua construïda des del codi, i no amb `.tscn`.
+- Decisions: `docs/decisions/0008`.
+
 ### Fase 6: àudio i sensacions (1 setmana)
 
 **Feina:**

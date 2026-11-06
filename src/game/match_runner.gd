@@ -22,6 +22,8 @@ var input_enabled := true
 ## salti també la presentació).
 var input_grace := 0
 var seed_used := 0
+## Orientació de la càmera per a l'entrada relativa (CameraRig.control_angle()).
+var camera_angle := 0.0
 var _break_t := 0.0
 var _last_state: StringName = &""
 
@@ -60,14 +62,17 @@ func tick() -> void:
 		return
 	if s.state == &"full":
 		return
-	if s.human_idx >= 0:
+	var skippable := s.mode == &"match" and (s.intro_t > 0.0 or s.state == &"replay")
+	if s.human_idx >= 0 or skippable:
 		if autopilot:
 			autopilot.drive(s, s.input)
 		elif input_grace > 0 or not input_enabled:
 			input_grace = maxi(0, input_grace - 1)
 			HumanController.compose(s.input, Vector2.ZERO, false, false, false, false, false)
+		elif s.human_idx >= 0:
+			HumanController.poll(s.input, camera_angle)
 		else:
-			HumanController.poll(s.input)
+			HumanController.poll_skip(s.input)
 	sim.step()
 	stepped.emit(s.events.duplicate())
 	if s.state != _last_state:

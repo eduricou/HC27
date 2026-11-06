@@ -20,7 +20,7 @@ Port per a Windows 11 del joc web *Estic Hoquei Herba*: Iluro HC contra Club Pol
 | Proves | `bash tools/test.sh` |
 | Format i lint | `bash tools/lint.sh` |
 | Estadístiques de la simulació | `bash tools/sim.sh 50` |
-| Captura de pantalla | `bash tools/shot.sh menu` |
+| Captura de pantalla | `bash tools/shot.sh menu` · `bash tools/shot.sh goal 900` (gol i repetició) |
 | Captures des dels angles fixos (Godot / web) | `bash tools/shot_views.sh` · `node tools/shot_web.mjs` |
 | Regenerar les textures de l'estadi | `bash tools/bake_textures.sh` |
 | Recorregut automàtic (menú → partit → final) | `bash tools/smoke.sh` |
@@ -35,4 +35,5 @@ Port per a Windows 11 del joc web *Estic Hoquei Herba*: Iluro HC contra Club Pol
 - **Fase 2 (primer jugable amb caixes grises):** feta. Hi ha camp pla amb línies, jugadors com a càpsules, càmera TV, teclat i comandament, HUD mínim, pausa, descansos i menú amb un partit de fons. Va a uns 355 fps a 1080p.
 - **Fase 3 (estadi i gespa):** feta. El camp és el real de l'Iluro al carrer Galícia: gespa amb shader, passeig amb banquetes i públic, tanques amb pancartes, bardissa i talús, torres de llum, casetes del club, el carrer amb cases i la ciutat al fons. També hi ha porteries amb xarxa que es mou, llum de tarda i de nit, i presets de qualitat. Fa 175–236 fps amb *Baixa* a 1080p i 76–100 fps amb *Alta* a 1440p en una gràfica integrada (`docs/decisions/0005` i `0006`).
 - **Fase 4 (jugadors riggejats i animacions):** feta. Els jugadors són models amb esquelet (Quaternius, CC0) amb les equipacions de l'Iluro i del Polo, dorsals, pell, cabells i barbes variats, i porters amb casc i proteccions. Corren sense que els peus rellisquin, porten el pal amb les dues mans i la pala toca la pilota on toca la simulació; celebren els gols i protesten les faltes. Fa 174–263 fps amb *Baixa* a 1080p (`docs/decisions/0007`).
-- **Fase 5 (càmeres, repeticions, HUD i menús):** és la següent.
+- **Fase 5 (càmeres, repeticions, HUD i menús):** feta. Hi ha presentació amb vol de càmera, primer pla del gol, repetició a càmera lenta amb tres angles que es pot saltar, i una càmera darrere de la porteria als córners curts. El HUD és com el de la web, amb escuts, minimapa, indicador del jugador, rètols, cortineta, descans i final. El menú té les equipacions en 3D, i les opcions de pantalla, FSR, so i tecles es desen. Tot es fa servir amb teclat, ratolí o comandament (`docs/decisions/0008`).
+- **Fase 6 (àudio i sensacions):** és la següent.

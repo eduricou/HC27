@@ -9,18 +9,20 @@ const HW := Constants.HW
 
 
 func test_accions_registrades_amb_teclat_i_comandament() -> void:
-	InputActions.ensure()
+	InputActions.reset()
 	InputActions.ensure()  # dues vegades no ha de duplicar res
-	for action: StringName in InputActions.DEFAULTS:
+	for action: StringName in InputActions.ACTIONS:
 		assert_bool(InputMap.has_action(action)).is_true()
 		var events := InputMap.action_get_events(action)
-		assert_int(events.size()).is_equal(InputActions.DEFAULTS[action].size())
+		var d: Dictionary = InputActions.DEFAULTS[action]
+		assert_int(events.size()).is_equal(d["keys"].size() + d["pad"].size())
 		var has_key := false
 		var has_pad := false
 		for e in events:
 			has_key = has_key or e is InputEventKey
 			has_pad = has_pad or e is InputEventJoypadButton or e is InputEventJoypadMotion
 		assert_bool(has_key and has_pad).override_failure_message(String(action)).is_true()
+	assert_bool(InputMap.has_action(InputActions.SKIP)).is_true()
 
 
 func test_entrada_humana_normalitza_la_direccio() -> void:

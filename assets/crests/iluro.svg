@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="400" height="480" viewBox="0 0 100 120">
+<!-- Escut original de l'Iluro HC (port de drawCrest() de la web): escut partit en diagonal, onades i estic. -->
+<defs><clipPath id="shield"><path d="M12 8 L88 8 L88 56 Q88 94 50 114 Q12 94 12 56 Z"/></clipPath></defs>
+<path d="M12 8 L88 8 L88 56 Q88 94 50 114 Q12 94 12 56 Z" fill="#ffffff"/>
+<g clip-path="url(#shield)">
+<path d="M0 0 L100 0 L100 18 L0 96 Z" fill="#f07c1a"/>
+<g fill="none" stroke="#f07c1a" stroke-width="4.5"><path d="M30 78 Q32.75 72 35.5 78 Q38.25 84 41 78 Q43.75 72 46.5 78 Q49.25 84 52 78 Q54.75 72 57.5 78 Q60.25 84 63 78 Q65.75 72 68.5 78 Q71.25 84 74 78 Q76.75 72 79.5 78 Q82.25 84 85 78 Q87.75 72 90.5 78 Q93.25 84 96 78 Q98.75 72 101.5 78 Q104.25 84 107 78"/><path d="M30 88 Q32.75 82 35.5 88 Q38.25 94 41 88 Q43.75 82 46.5 88 Q49.25 94 52 88 Q54.75 82 57.5 88 Q60.25 94 63 88 Q65.75 82 68.5 88 Q71.25 94 74 88 Q76.75 82 79.5 88 Q82.25 94 85 88 Q87.75 82 90.5 88 Q93.25 94 96 88 Q98.75 82 101.5 88 Q104.25 94 107 88"/><path d="M30 98 Q32.75 92 35.5 98 Q38.25 104 41 98 Q43.75 92 46.5 98 Q49.25 104 52 98 Q54.75 92 57.5 98 Q60.25 104 63 98 Q65.75 92 68.5 98 Q71.25 104 74 98 Q76.75 92 79.5 98 Q82.25 104 85 98 Q87.75 92 90.5 98 Q93.25 104 96 98 Q98.75 92 101.5 98 Q104.25 104 107 98"/></g>
+</g>
+<g fill="none" stroke="#241002" stroke-width="5" stroke-linecap="round">
+<path d="M72 20 L45 86"/><path d="M45 86 Q41 95 33 90"/>
+</g>
+<circle cx="31" cy="36" r="10" fill="#ffffff" stroke="#241002" stroke-width="2.5"/>
+<g fill="#f07c1a"><circle cx="28" cy="33" r="1.6"/><circle cx="34" cy="34" r="1.6"/><circle cx="30" cy="40" r="1.6"/></g>
+<path d="M12 8 L88 8 L88 56 Q88 94 50 114 Q12 94 12 56 Z" fill="none" stroke="#241002" stroke-width="5" stroke-linecap="round"/>
+</svg>

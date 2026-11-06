@@ -5,7 +5,7 @@
 ## Decisions
 
 1. **Les accions d'entrada es registren en temps d'execució** (`src/game/input_actions.gd`) i no a `project.godot`. La fase 5 les ha de poder reassignar i desar a `user://`, i així les assignacions per defecte són en un sol lloc del codi. A l'editor de Godot no surten a *Projecte › Configuració › Mapa d'entrada*.
-2. **El HUD i el menú es construeixen des del codi** (`src/ui/hud.gd`, `menu.gd` i `ui_kit.gd`). La fase 5 els refarà amb escenes (`scenes/ui/*.tscn`), escuts i fonts pròpies.
+2. **El HUD i el menú es construeixen des del codi** (`src/ui/hud.gd`, `menu.gd` i `ui_kit.gd`). La fase 5 els refarà amb escenes (`scenes/ui/*.tscn`), escuts i fonts pròpies. *(Fase 5: es van refer amb escuts i lletres pròpies, però continuen construïts des del codi; vegeu la decisió 0008.)*
 3. **La interpolació de la vista és manual.**
    - `MatchView` desa l'estat després de cada pas de simulació (en `_physics_process`, amb prioritat posterior a la del `MatchRunner`).
    - A cada fotograma interpola amb `Engine.get_physics_interpolation_fraction()`.

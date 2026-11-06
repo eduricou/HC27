@@ -1,9 +1,12 @@
 ## Arrencada i flux de pantalles: menú (amb un partit de demostració de fons), partit,
 ## pausa, descans i final. Amb `-- --scenario=<nom>` prepara situacions per a captures
 ## (tools/shot.sh, tools/shot_views.sh) i proves (tools/smoke.sh, tools/bench.sh):
-##   menu · intro · match · human · pc · pause · break · full · smoke · smoke_human ·
-##   bench · views · follow (càmera que segueix un jugador de tools/views.json mentre
-##   juga: --cams=jugador_davant)
+##   menu (--controls=1: amb la taula de controls) · options (--tab=0|1|2: pantalla, so,
+##   tecles) · intro · match · human · pc · pause · break · full ·
+##   goal (fins al primer gol, per a la càmera del gol i la repetició; --after=<segons>
+##   avança encara més) · smoke · smoke_human · bench · views · follow (càmera que segueix
+##   un jugador de tools/views.json mentre juga: --cams=jugador_davant)
+## Els escenaris no llegeixen ni desen les opcions de l'usuari (user://opcions.cfg).
 ## Altres arguments: --time=tarda|nit (per defecte, nit), --quality=baixa|mitjana|alta|ultra
 ## i, per provar, --qset=clau=valor,... (canvia valors del preset; vegeu Quality.override).
 ## ref: línies 1940–2029 (startMatch(), backToMenu(), togglePause(), start())
@@ -18,6 +21,8 @@ const VIEWS_SETTLE := 12
 
 var mode: StringName = &"menu"
 var scenario := ""
+var settings := GameSettings.new()
+var options: OptionsScreen
 var _opts := {"side": 0, "diff": "normal", "qlen": 150.0}
 var _rng := RandomNumberGenerator.new()
 var _t := 0.0
@@ -36,38 +41,89 @@ var _settle := 0
 
 
 func _ready() -> void:
-	InputActions.ensure()
 	_rng.randomize()
-	var q := Quality.preset(_arg("quality") if _arg("quality") != "" else Quality.DEFAULT)
-	Quality.override(q, _arg("qset"))
-	Quality.apply_viewport(q, get_viewport())
-	stadium.apply_quality(q)
+	scenario = _arg("scenario")
+	# Les opcions desades només valen per jugar: els escenaris de proves i captures fan
+	# servir les de per defecte (i no les desen).
+	if scenario == "":
+		settings.load_file()
+	settings.apply_input()
+	settings.apply_audio()
+	if scenario == "":
+		settings.apply_window()
+	_apply_graphics()
 	if _arg("res3d") != "":
 		# Mesura de rendiment a una resolució 3D més gran que la finestra (p. ex. 1440p).
 		var h := float(_arg("res3d").split("x")[1])
 		get_viewport().scaling_3d_scale = h / get_viewport().get_visible_rect().size.y
-	stadium.set_night(_arg("time") != "tarda")
-	menu.night = stadium.night
+	if _arg("time") != "":
+		settings.night = _arg("time") != "tarda"
+	stadium.set_night(settings.night)
+	cam.wide = settings.cam == "ampla"
+	cam.pc_enabled = settings.pc_cam
+	menu.settings = settings
 	menu.night_changed.connect(stadium.set_night)
+	menu.cam_changed.connect(_on_cam_changed)
+	menu.changed.connect(_save_settings)
+	menu.options_requested.connect(_open_options)
+	options = OptionsScreen.new()
+	options.name = "Opcions"
+	options.settings = settings
+	options.persist = scenario == ""
+	add_child(options)
+	options.closed.connect(_options_closed)
+	options.graphics_changed.connect(_apply_graphics)
+	options.game_changed.connect(func() -> void: cam.pc_enabled = settings.pc_cam)
 	runner.stepped.connect(stadium.on_step)
 	runner.stepped.connect(view.on_events)
 	view.runner = runner
 	cam.runner = runner
 	cam.view = view
-	hud.runner = runner
+	hud.bind(runner, view, cam)
 	runner.stepped.connect(hud.on_events)
 	runner.stepped.connect(_count_events)
 	runner.quarter_break.connect(_on_break)
 	runner.quarter_started.connect(hud.hide_break)
 	runner.full_time.connect(_on_full_time)
 	hud.resume_requested.connect(toggle_pause)
+	hud.pause_requested.connect(toggle_pause)
 	hud.restart_requested.connect(_restart)
 	hud.menu_requested.connect(go_menu)
 	hud.next_quarter_requested.connect(runner.next_quarter)
 	hud.play_again_requested.connect(_restart)
+	hud.options_requested.connect(_open_options)
 	menu.play_requested.connect(start_match)
-	scenario = _arg("scenario")
 	_start_scenario()
+
+
+## Qualitat gràfica (opcions o --quality, que hi mana) i escala FSR.
+func _apply_graphics() -> void:
+	var q := settings.graphics_preset(_arg("quality"))
+	Quality.override(q, _arg("qset"))
+	Quality.apply_viewport(q, get_viewport())
+	stadium.apply_quality(q)
+
+
+func _save_settings() -> void:
+	if scenario == "":
+		settings.save_file()
+
+
+func _on_cam_changed(c: String) -> void:
+	cam.wide = c == "ampla"
+	cam.snap()
+
+
+func _open_options() -> void:
+	options.open()
+
+
+## En tancar les opcions, el focus torna a la pantalla d'on s'han obert.
+func _options_closed() -> void:
+	if mode == &"menu":
+		menu.refocus()
+	elif hud.pause_screen.visible:
+		hud.pause_screen.refocus()
 
 
 ## Torna al menú amb un partit de demostració de fons. ref: backToMenu()
@@ -77,6 +133,8 @@ func go_menu() -> void:
 	runner.start(_rng.randi(), MatchState.DEMO_QLEN, -1, "normal", &"demo")
 	runner.input_enabled = false
 	hud.set_match_visible(false)
+	hud.show_pause(false)
+	hud.hide_break()
 	view.sync_now()
 	cam.snap()
 	menu.open()
@@ -85,6 +143,7 @@ func go_menu() -> void:
 ## Partit nou. side: 0 Iluro, 1 Polo, −1 CPU contra CPU. ref: startMatch()
 func start_match(side: int, diff: String, qlen: float) -> void:
 	mode = &"match"
+	_save_settings()
 	_opts = {"side": side, "diff": diff, "qlen": qlen}
 	var seed_value := _rng.randi()
 	print(
@@ -95,7 +154,9 @@ func start_match(side: int, diff: String, qlen: float) -> void:
 	runner.input_enabled = true
 	runner.input_grace = 20
 	menu.close()
+	hud.night = stadium.night
 	hud.set_match_visible(true)
+	get_viewport().gui_release_focus()
 	view.sync_now()
 	cam.snap()
 
@@ -107,8 +168,13 @@ func toggle_pause() -> void:
 	var st := runner.sim.s.state
 	if st == &"break" or st == &"full":
 		return
+	if options.visible:
+		return
 	runner.paused = not runner.paused
 	runner.input_enabled = not runner.paused
+	if not runner.paused:
+		# Que el botó que tanca la pausa no faci també una passada o un xut.
+		runner.input_grace = 6
 	hud.show_pause(runner.paused)
 
 
@@ -160,6 +226,16 @@ func _start_scenario() -> void:
 	match scenario:
 		"", "menu":
 			go_menu()
+			if _arg("controls") != "":
+				# Taula de controls oberta (captures).
+				var b: Button = menu.get("_help_btn")
+				b.button_pressed = true
+				menu.call(&"_toggle_help")
+		"options":
+			# Menú d'opcions obert (--tab=0|1|2: pantalla, so, tecles).
+			go_menu()
+			options.open()
+			options.call(&"_show_tab", int(_arg("tab")))
 		"intro":
 			start_match(-1, "normal", 150.0)
 		"match", "pause", "bench":
@@ -186,6 +262,18 @@ func _start_scenario() -> void:
 			s.clock = 1.0
 			# El servei de centre no fa córrer el rellotge: cal arribar al joc.
 			runner.fast_forward(240)
+			view.sync_now()
+			cam.snap()
+		"goal":
+			# Fins al primer gol, per revisar la càmera del gol, la cortineta i la repetició.
+			_quick_match(-1, 0.0)
+			var steps := 0
+			while runner.sim.s.state != &"goal" and steps < 60 * 900:
+				runner.tick()
+				steps += 1
+			# --after=<segons>: avança encara més (p. ex. fins a la repetició).
+			if _arg("after") != "":
+				runner.fast_forward(roundi(float(_arg("after")) * 60.0))
 			view.sync_now()
 			cam.snap()
 		"views":
