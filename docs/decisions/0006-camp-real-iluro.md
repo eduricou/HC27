@@ -33,7 +33,7 @@ Les mides del joc no canvien. Orientació:
   - Al cel (`shaders/sky.gdshader`) hi ha dues carenes, una de verda a davant i una de blavosa al fons, més altes darrere de les banquetes i sense llums de nit.
   - Es mantenen les casetes del club, el carrer amb cotxes, els fanals i els arbres.
 - La llum del sol continua sent la de la web. Ve del sud-oest, de darrere el passeig: és una llum de tarda.
-- **Revisió (7/11/2026, gespa, banquetes i arbres):** l'usuari va dir que les banquetes eren rectangles lletjos i que els arbres eren estranys, i va passar una foto de les banquetes reals.
+- **Revisió (7/11/2026, gespa, banquetes i arbres; vegeu també la decisió 0011):** l'usuari va dir que les banquetes eren rectangles lletjos i que els arbres eren estranys, i va passar una foto de les banquetes reals.
   - **Banquetes** (`Dugout`, com a la foto):
     - una sola estructura amb el sostre blanc, pla i continu;
     - dues banquetes de tres trams, amb el marc d'acer taronja i els plafons negres (barra taronja a mitja alçada), i vuit cadires blanques de plàstic a cada banda;

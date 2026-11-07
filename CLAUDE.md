@@ -9,7 +9,9 @@ Regles, constants i toleràncies: docs/regles.md. Decisions: docs/decisions/.
 - Fases 0 (preparació), 1 (simulació headless), 2 (primer jugable amb caixes grises),
   3 (estadi i gespa), 4 (jugadors amb esquelet i animacions), 5 (càmeres, repeticions,
   HUD i menús), 6 (àudio i sensacions) i 7 (optimització i qualitat, 6/11/2026) fetes.
-  Següent: fase 8 (exportació i distribució), pla §9 i §10.
+  Després, millores visuals demanades per l'usuari (porter, pilota, pal, mans, sabatilles,
+  cossos, postures, gespa, banquetes, arbres, públic, cotxes, cops; 7/11/2026,
+  docs/decisions/0011). Següent: fase 8 (exportació i distribució), pla §9 i §10.
 - La referència és la versió de 2.029 línies, no la «v4» del pla original (docs/decisions/0001).
 - La simulació de src/sim/ reprodueix la web pas a pas amb la mateixa llavor
   (docs/decisions/0002). Un partit triga ~10 s en un procés i ens hi quedem: el criteri és
@@ -88,31 +90,34 @@ Regles, constants i toleràncies: docs/regles.md. Decisions: docs/decisions/.
   En crear controls a _ready() (ja dins de l'arbre), fes servir
   set_anchors_and_offsets_preset(): set_anchors_preset() hi deixa la mida 0.
 - Coords.to_view() és una reflexió: les malles generades s'han de fer amb MeshBuilder
-  (src/game/stadium/mesh_builder.gd), que orienta cada triangle segons la normal, o amb
-  `cull_mode = CULL_DISABLED`; si no, les cares no es veuen.
+  (src/game/stadium/mesh_builder.gd, coordenades de la simulació) o MeshPart
+  (src/game/mesh_part.gd, coordenades de Godot, amb colors per vèrtex i ossos), que
+  orienten cada triangle segons la normal; si no, les cares no es veuen.
 - El camp (scenes/stadium.tscn, src/game/stadium/) és el real de l'Iluro al carrer Galícia
   (foto aèria; docs/decisions/0006), no l'estadi de la web: sense grada, passeig amb
   banquetes i públic dret a −y, bardissa i talús a +y (on és la càmera TV), casetes del club
-  a +x. Banquetes com les reals (Dugout, foto de l'usuari) i arbres en 3D fets amb codi
-  (TreeMesh, repetits amb MultiMesh). Tota la disposició és a StadiumLayout. Res de l'est
-  no pot tapar la vista TV (hi ha una prova). Porta també la llum (tarda: sol; nit: 6 focus), el cel i l'entorn. Shader
-  globals a project.godot: night, crowd_jump. El camp fix va a la capa 2 i els focus de nit
-  no en fan ombra (shadow_caster_mask). Efectes del partit (xarxa, públic): StadiumFx.
-- Jugadors (fase 4, docs/decisions/0007): PlayerView (posició i orientació, de MatchView)
+  a +x. Tota la disposició és a StadiumLayout. Res de l'est no pot tapar la vista TV (hi ha
+  una prova). Fet amb codi (docs/decisions/0011): banquetes com les reals (Dugout), arbres
+  i bardissa (TreeMesh), públic (SpectatorMesh) i cotxes (CarMesh), repetits amb MultiMesh;
+  el terra arriba a l'horitzó, amb conreus i arbres de lluny. Porta també la llum (tarda:
+  sol; nit: 6 focus), el cel i l'entorn. Shader globals a project.godot: night,
+  crowd_jump. El camp fix va a la capa 2 i els focus de nit no en fan ombra
+  (shadow_caster_mask). Efectes del partit (xarxa, públic): StadiumFx.
+- Jugadors (docs/decisions/0007 i 0011): PlayerView (posició i orientació, de MatchView)
   conté un PlayerRig (src/game/players/): cos de Quaternius (CC0) amb l'equipació pintada pel
   shader player_kit (KitMesh: textura de dades per vèrtex llegida amb VERTEX_ID; el mateix
-  shader fa les complexions de PlayerRig.BUILDS amb el relleu de KitMesh.shape_texture), AnimationTree
-  (locomoció sincronitzada: ritme = velocitat / passa, peus sense lliscar), PostureModifier3D
-  i IK de cames i braços. El pal (StickMesh, fet amb codi) toca la pilota amb la cara del
-  ganxo al punt de control de la simulació (stickPt/stickWorld) o, si la porta, on es veu
-  la pilota. Les mans hi van amb IK i GripModifier3D les gira i hi tanca els dits.
-  MatchView.engagement() diu qui és a la jugada: ajupit i amb el pal a terra (qui porta
-  la pilota, el rival que la va a robar, el porter) o més dret i amb el pal aixecat.
-  L'equip del porter és GkGear, i les sabatilles són ShoeMesh: es mouen amb els ossos
-  del peu, i els colors, de cada jugador, són instance uniforms. Tots tres fan servir
-  MeshPart. La pilota és BallView: té
-  la mida real, però mai fa menys de 7 px a la pantalla, i roda. Les accions (celebrar,
-  protestar, estirada, entrada) les disparen els esdeveniments a MatchView.on_events.
+  shader fa les complexions de PlayerRig.BUILDS amb el relleu de KitMesh.shape_texture),
+  AnimationTree (locomoció sincronitzada: ritme = velocitat / passa, peus sense lliscar) i
+  modificadors de l'esquelet, en aquest ordre: PostureModifier3D (ajupit o dret, i el cop),
+  IK de les cames, StickPlacer (el pal i on l'agafen les mans), IK dels braços i
+  GripModifier3D (gira les mans i hi tanca els dits). El pal (StickMesh) toca la pilota amb
+  la cara del ganxo al punt de control de la simulació (stickPt/stickWorld) o, si la porta,
+  on es veu la pilota. MatchView.engagement() diu qui és a la jugada: ajupit i amb el pal a
+  terra (qui porta la pilota, el rival que la va a robar, el córner, el porter) o més dret
+  i amb el pal aixecat. Equip del porter: GkGear; sabatilles: ShoeMesh (es mouen amb els
+  ossos del peu; colors per jugador). La pilota és BallView: mida real, però mai menys de
+  7 px a la pantalla, i roda. MatchView.on_events dispara les accions (celebrar, protestar,
+  entrada), la força del cop i l'estirada del porter (procedural).
 - So (src/game/audio/, docs/decisions/0009): MatchSound escolta els esdeveniments de cada
   pas (com MatchView) i fa sonar SfxBank en 3D al lloc on passen; el públic (petit) és un
   murmuri en dues capes amb reaccions. Cada tipus d'esdeveniment de src/sim/ ha de ser a

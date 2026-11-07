@@ -659,6 +659,10 @@ Les durades són orientatives i suposen una sola persona a temps parcial.
 - **Pendent:** provar-ho en altres PC (no n'hi havia cap més); la gespa de tarda surt més fosca amb Compatibility.
 - Decisions: `docs/decisions/0010`.
 
+### Després de la fase 7: millores visuals
+
+**Fet (7/11/2026).** L'usuari va jugar i va demanar millores gràfiques una per una; després, una revisió de tot. Ho recull la decisió 0011: equip del porter, pilota de mida real que roda, pal amb ganxo i mans que l'agafen, sabatilles de colors, set complexions de Papis, postures ajupit o dret segons la jugada, cops amb el cos i estirada del porter, gespa i banquetes com les reals, i arbres, públic i cotxes en 3D fets amb codi. La simulació no canvia. Rendiment: 119–140 fps amb *Alta* i cap estrebada de més de 50 ms durant el partit.
+
 ### Fase 8: exportació i distribució (2–3 dies)
 
 **Feina:**

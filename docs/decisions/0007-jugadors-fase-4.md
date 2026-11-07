@@ -137,7 +137,7 @@ Ho comprova `test_els_peus_no_rellisquen`, que hi posa un límit del 15 %.
     | Baixa, de tarda | 203 | 13 ms |
 
     Una de les tres mesures a Alta va tenir una aturada puntual de 76 ms, que no es va repetir.
-- **Revisió (7/11/2026, postura segons la jugada):** l'usuari va demanar dues postures. Ajupit i amb el pal a terra quan el jugador porta la pilota, i més dret quan no la porta. I que els que no la porten només posin el pal a terra quan s'acosten a qui la porta per robar-la.
+- **Revisió (7/11/2026, postura segons la jugada; la revisió final és a la decisió 0011):** l'usuari va demanar dues postures. Ajupit i amb el pal a terra quan el jugador porta la pilota, i més dret quan no la porta. I que els que no la porten només posin el pal a terra quan s'acosten a qui la porta per robar-la.
   - **Qui és a la jugada** (`MatchView.engagement()`, de 0 a 1):
     - el porter, sempre;
     - qui porta la pilota;
