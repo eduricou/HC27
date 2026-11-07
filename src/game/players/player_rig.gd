@@ -32,6 +32,9 @@ const HAIRSTYLE: Array[int] = [0, 1, 2, -1, 0]
 ## rellisca. El repòs es barreja a part, a velocitats de caminar o menys.
 ## Arbre: output ← shot (OneShot: action) ← move (Blend2: idle | rate ← loco).
 const GAIT: Array[String] = ["walk", "jog", "sprint"]
+## Estirada del porter: durada (s) i fins on es tomba (radiants).
+const DIVE_LEN := 0.95
+const DIVE_ANGLE := 1.15
 
 ## Complexions dels Papis: [alçada (escala), gruix (m), panxa (m), músculs llisos (0–1)].
 ## El model és un superheroi: tots en perden el relleu i les espatlles (shaders/player_kit).
@@ -68,11 +71,17 @@ var grips: Array[Marker3D] = []
 ## Postura de joc (0: dret, amb el pal aixecat; 1: ajupit, amb el pal a terra), suavitzada.
 ## −1 fins al primer fotograma.
 var low := -1.0
+## Força de l'últim cop (0 passada suau, 1 xut fort): com més força, més gira el tronc i
+## més amunt va el pal.
+var stroke := 0.0
 
 var _body: Node3D
 var _action: AnimationNodeAnimation
 var _action_left := 0.0
 var _last_stun := 0.0
+## Estirada del porter: temps que queda i cap a quin costat (+1 a la dreta del jugador).
+var _dive_t := 0.0
+var _dive_side := 1.0
 
 
 func setup(p: Player, def: TeamData) -> void:
@@ -237,7 +246,12 @@ func animate(p: Player, speed: float, delta: float, ball := Vector3.INF, engaged
 	drop = lerpf(lerpf(0.03, 0.0, run), drop, low)
 	twist = lerpf(0.08, twist, low)
 	roll = lerpf(lerpf(0.06, 0.03, run), roll, low)
-	var k := 1.0 - exp(-delta * 8.0)
+	# El cop: el tronc gira cap al pal i baixa l'espatlla dreta, més com més fort és.
+	var hit := sin((p.swing / 0.25) * PI) if p.swing > 0.0 else 0.0
+	twist -= hit * lerpf(0.15, 0.6, stroke)
+	roll += hit * lerpf(0.05, 0.25, stroke)
+	lean += hit * lerpf(0.0, 0.12, stroke)
+	var k := 1.0 - exp(-delta * (8.0 if hit == 0.0 else 20.0))
 	posture.lean = lerpf(posture.lean, 0.0 if free else lean, k)
 	posture.hip = lerpf(posture.hip, 0.0 if free else hip, k)
 	posture.drop = lerpf(posture.drop, 0.0 if free else drop, k)
@@ -246,6 +260,7 @@ func animate(p: Player, speed: float, delta: float, ball := Vector3.INF, engaged
 	posture.roll = lerpf(posture.roll, 0.0 if free else roll, k)
 	# El pal es col·loca en actualitzar l'esquelet (StickPlacer), amb la postura ja feta.
 	placer.args = [p.swing, ik.influence, ball, delta]
+	_animate_dive(delta)
 
 
 ## Partit nou (es reaprofita el jugador): talla l'acció que feia.
@@ -253,9 +268,35 @@ func reset() -> void:
 	tree.set(&"parameters/shot/request", AnimationNodeOneShot.ONE_SHOT_REQUEST_ABORT)
 	placer.reset()
 	low = -1.0
+	stroke = 0.0
+	_dive_t = 0.0
+	transform = Transform3D.IDENTITY
 	_action_left = 0.0
 	_last_stun = 0.0
 	ik.influence = 1.0
+
+
+## Estirada del porter cap al costat `side` (+1 a la seva dreta): el cos cau de costat, fent
+## pivot al peu d'aquell costat, i s'allarga cap a la pilota; després es torna a posar dret.
+## Ref: un porter d'hoquei es llança amb les guardes i el pal per tapar la pilota.
+func dive(side: float) -> void:
+	_dive_t = DIVE_LEN
+	_dive_side = signf(side) if side != 0.0 else 1.0
+
+
+func _animate_dive(delta: float) -> void:
+	if _dive_t <= 0.0:
+		return
+	_dive_t = maxf(0.0, _dive_t - delta)
+	var t := 1.0 - _dive_t / DIVE_LEN
+	# Cau ràpid (0,2 s), s'hi està una mica i es torna a aixecar.
+	var c := smoothstep(0.0, 0.22, t) * (1.0 - smoothstep(0.55, 1.0, t))
+	var a := -_dive_side * DIVE_ANGLE * c
+	var pivot := Vector3(_dive_side * 0.15, 0.0, 0.0)
+	var r := Basis(Vector3.BACK, a)
+	transform = Transform3D(r, pivot - r * pivot + Vector3(_dive_side * 0.35 * c, 0.0, 0.0))
+	if _dive_t <= 0.0:
+		transform = Transform3D.IDENTITY
 
 
 ## Acció d'una sola vegada (celebrar, protestar, trontollar...). Si `hands_free`, les mans

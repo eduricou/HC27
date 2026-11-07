@@ -142,3 +142,44 @@ func test_ajupits_al_penal_corner() -> void:
 	s.pc_live = false
 	var upright := near.filter(func(p: Player) -> bool: return MatchView.engagement(s, p) < 1.0)
 	assert_int(upright.size()).is_greater(0)
+
+
+## Cops: un xut fort fa girar més el tronc i aixeca més el pal que una passada suau.
+func test_el_xut_fort_gira_mes_que_la_passada() -> void:
+	var out := {}
+	for power: float in [0.0, 1.0]:
+		var p := _sim.s.teams[0].players[6]
+		var v := _rig_for(p)
+		v.stroke(power)
+		p.swing = 0.0
+		for f in 20:
+			v.animate(p, 0.0, 1.0 / 60.0)
+			await get_tree().process_frame
+		p.swing = 0.125
+		for f in 12:
+			v.animate(p, 0.0, 1.0 / 60.0)
+			await get_tree().process_frame
+		out[power] = [v.rig.posture.twist, v.rig.placer.blade.y]
+	assert_float(out[1.0][0]).is_less(out[0.0][0] - 0.2)
+	assert_float(out[1.0][1]).is_greater(out[0.0][1] + 0.15)
+	_sim.s.teams[0].players[6].swing = 0.0
+
+
+## Estirada del porter: cau cap al costat de la pilota i després es torna a posar dret.
+func test_estirada_del_porter() -> void:
+	var gk: Player = _sim.s.teams[0].gk
+	var v := _rig_for(gk)
+	for f in 10:
+		v.animate(gk, 0.0, 1.0 / 60.0)
+		await get_tree().process_frame
+	v.dive_toward(v.to_global(Vector3(2.0, 0.0, -1.0)))
+	for f in 15:
+		v.animate(gk, 0.0, 1.0 / 60.0)
+		await get_tree().process_frame
+	# El cap va cap a +x (la dreta del porter) i baixa.
+	var up := v.rig.transform.basis.y
+	assert_float(up.x).is_greater(0.6)
+	for f in 60:
+		v.animate(gk, 0.0, 1.0 / 60.0)
+		await get_tree().process_frame
+	assert_object(v.rig.transform).is_equal(Transform3D.IDENTITY)

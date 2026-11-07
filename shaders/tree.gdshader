@@ -2,8 +2,12 @@
 // massa) i el soroll del món fa les clapes de fulles. La llum embolcalla una mica (les
 // copes no tenen la cara fosca negra) i passa una mica a contrallum. A la silueta, el
 // soroll hi fa forats perquè no sembli una esfera llisa. El vent mou més la part alta.
+// De nit, la llum dels focus que rebota al camp arriba als arbres de prop, sobretot a la
+// cara que mira cap al camp: si no, serien siluetes negres.
 shader_type spatial;
 render_mode diffuse_lambert_wrap;
+
+global uniform float night;
 
 uniform sampler2D noise_tex : filter_linear_mipmap, repeat_enable;
 uniform float sway = 0.05;
@@ -37,6 +41,9 @@ void fragment() {
 	col = pow(col, vec3(2.2));
 	ALBEDO = col;
 	BACKLIGHT = col * 0.35;
+	float near = 1.0 - smoothstep(35.0, 130.0, length(wpos.xz));
+	float facing = 0.45 + 0.55 * clamp(dot(wnorm.xz, -normalize(wpos.xz + vec2(1e-3))), 0.0, 1.0);
+	EMISSION = col * vec3(1.0, 0.96, 0.88) * night * near * facing * 0.55;
 	ROUGHNESS = 0.92;
 	SPECULAR = 0.12;
 	// Forats a la silueta: com més de cantell, més n'hi ha.

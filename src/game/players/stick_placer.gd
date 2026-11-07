@@ -77,7 +77,9 @@ func _place(swing: float, hold: float, ball: Vector3, delta: float) -> void:
 	var height := rig.height
 	var k := sin((swing / 0.25) * PI) if swing > 0.0 else 0.0
 	var ctrl := CARRY_BLADE.lerp(Vector3(STICK_SIDE, 0.0, -STICK_F), low)
-	ctrl += Vector3(k * 0.35, k * 0.75, k * 0.55)
+	# Amb un xut fort, el pal fa més arc (passada: com a la web; xut: un 40 % més amunt).
+	var lift := 1.0 + 0.4 * maxf(0.0, rig.stroke - 0.5) * 2.0
+	ctrl += Vector3(k * 0.35, k * 0.75 * lift, k * 0.55)
 	# Amb la pilota, el pal va on es veu la pilota. La diferència amb el punt de control
 	# es suavitza perquè el pal no salti quan la guanya o la perd.
 	var off := Vector3.ZERO

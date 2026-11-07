@@ -45,3 +45,13 @@ func animate(
 
 func trigger(action: StringName, hands_free: bool = true) -> void:
 	rig.trigger(action, hands_free)
+
+
+## Un cop de pal amb força `power` (0 suau, 1 molt fort).
+func stroke(power: float) -> void:
+	rig.stroke = clampf(power, 0.0, 1.0)
+
+
+## Estirada del porter cap a on és la pilota (global).
+func dive_toward(ball: Vector3) -> void:
+	rig.dive(to_local(ball).x)

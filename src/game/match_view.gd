@@ -237,7 +237,14 @@ func on_events(events: Array[Dictionary]) -> void:
 					if p.is_gk:
 						_trigger(s, p, &"protest")
 			&"save":
-				_trigger(s, e.get("player"), &"dive")
+				var gk := _view_of(s, e.get("player"))
+				if gk:
+					gk.dive_toward(_ball.position)
+			&"kick":
+				# Força del cop: una passada suau (9 m/s) és 0, i un xut a 30 m/s, 1.
+				var kv := _view_of(s, e.get("player"))
+				if kv:
+					kv.stroke(inverse_lerp(9.0, 30.0, float(e.get("speed", 9.0))))
 			&"tackle":
 				_trigger(s, e.get("player"), &"lunge", false)
 			&"restart":
@@ -252,8 +259,14 @@ func trigger_all(action: StringName) -> void:
 
 
 func _trigger(s: MatchState, p: Player, action: StringName, hands_free: bool = true) -> void:
+	var v := _view_of(s, p)
+	if v:
+		v.trigger(action, hands_free)
+
+
+## La vista del jugador `p` (o null).
+func _view_of(s: MatchState, p: Player) -> PlayerView:
 	if p == null:
-		return
+		return null
 	var i := s.players.find(p)
-	if i >= 0 and i < _views.size():
-		_views[i].trigger(action, hands_free)
+	return _views[i] if i >= 0 and i < _views.size() else null
