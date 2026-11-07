@@ -102,3 +102,60 @@ static func data_texture(mesh: Mesh, skin: Skin, sk: Skeleton3D) -> ImageTexture
 		var p := verts[v]
 		img.set_pixel(v % TEX_W, v / TEX_W, Color(p.x, p.y, p.z, parts[bones[v * per + best]]))
 	return ImageTexture.create_from_image(img)
+
+
+## Relleu dels músculs: per a cada vèrtex, quant s'ha de moure al llarg de la normal per
+## arribar a la superfície llisa (suavitzat de Taubin, que treu el relleu sense encongir el
+## cos). Va a una textura d'un píxel per vèrtex, com data_texture(), i el shader en fa
+## servir la part que vulgui cada jugador (instance uniform `soft`).
+static func shape_texture(mesh: Mesh, iterations := 30) -> ImageTexture:
+	var arr := mesh.surface_get_arrays(0)
+	var verts: PackedVector3Array = arr[Mesh.ARRAY_VERTEX]
+	var normals: PackedVector3Array = arr[Mesh.ARRAY_NORMAL]
+	var index: PackedInt32Array = arr[Mesh.ARRAY_INDEX]
+	# Els vèrtexs repetits a les costures de la textura són un sol punt.
+	var ids := {}
+	var uid := PackedInt32Array()
+	uid.resize(verts.size())
+	var pos := PackedVector3Array()
+	for i in verts.size():
+		var v := verts[i]
+		var k := Vector3i(roundi(v.x * 1e4), roundi(v.y * 1e4), roundi(v.z * 1e4))
+		if not ids.has(k):
+			ids[k] = pos.size()
+			pos.append(v)
+		uid[i] = ids[k]
+	var nbrs: Array[PackedInt32Array] = []
+	nbrs.resize(pos.size())
+	for i in pos.size():
+		nbrs[i] = PackedInt32Array()
+	for t in range(0, index.size(), 3):
+		for e in 3:
+			var a := uid[index[t + e]]
+			var b := uid[index[t + (e + 1) % 3]]
+			if a != b and not nbrs[a].has(b):
+				nbrs[a].append(b)
+				nbrs[b].append(a)
+	var cur := pos.duplicate()
+	var nxt := pos.duplicate()
+	for it in iterations:
+		for f: float in [0.5, -0.53]:
+			for i in cur.size():
+				var n := nbrs[i]
+				if n.is_empty():
+					continue
+				var avg := Vector3.ZERO
+				for j in n:
+					avg += cur[j]
+				nxt[i] = cur[i] + (avg / n.size() - cur[i]) * f
+			var tmp := cur
+			cur = nxt
+			nxt = tmp
+	var w := KitMesh.TEX_W
+	var img := Image.create_empty(
+		w, maxi(1, ceili(float(verts.size()) / w)), false, Image.FORMAT_RF
+	)
+	for i in verts.size():
+		var off := (cur[uid[i]] - verts[i]).dot(normals[i])
+		img.set_pixel(i % w, i / w, Color(off, 0.0, 0.0))
+	return ImageTexture.create_from_image(img)

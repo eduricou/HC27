@@ -391,3 +391,46 @@ func test_les_sabatilles_tapen_el_peu() -> void:
 	assert_array(names.keys()).contains_exactly_in_any_order(
 		["foot_l", "ball_l", "calf_l", "foot_r", "ball_r", "calf_r"]
 	)
+
+
+# --- Complexions ------------------------------------------------------------------------
+
+
+## Els Papis no són tots iguals: cada jugador té una complexió (alçada, gruix, panxa i
+## músculs llisos), sempre la mateixa, i en un equip n'hi ha de ben diferents.
+func test_complexions_diferents() -> void:
+	var builds := {}
+	var lo := INF
+	var hi := -INF
+	for p in _sim.s.teams[0].players:
+		var v := _rig_for(p)
+		var b := PlayerRig.build_of(p)
+		builds[Vector3(b.y, b.z, b.w)] = true
+		lo = minf(lo, b.x)
+		hi = maxf(hi, b.x)
+		assert_float(v.rig.height).is_equal(b.x)
+		assert_vector(v.rig._body.scale).is_equal_approx(Vector3.ONE * b.x, Vector3.ONE * 1e-5)
+		var mi := v.rig.body_mesh
+		assert_float(float(mi.get_instance_shader_parameter("belly"))).is_equal_approx(b.z, 1e-6)
+		assert_float(float(mi.get_instance_shader_parameter("girth"))).is_equal_approx(b.y, 1e-6)
+		assert_float(float(mi.get_instance_shader_parameter("soft"))).is_equal_approx(b.w, 1e-6)
+	assert_int(builds.size()).is_greater_equal(6)
+	assert_float(hi - lo).is_greater(0.07)
+
+
+## Relleu dels músculs: un píxel per vèrtex, uns quants mil·límetres de mitjana i mai més
+## de 3 cm (el suavitzat no ha d'encongir ni inflar el cos).
+func test_relleu_dels_musculs() -> void:
+	var body: Node = auto_free(PlayerRig.BODY_SCENE.instantiate())
+	var mi := body.get_node("Armature/Skeleton3D/SuperHero_Male") as MeshInstance3D
+	var img := KitMesh.shape_texture(mi.mesh).get_image()
+	var n: int = mi.mesh.surface_get_array_len(0)
+	assert_int(img.get_width() * img.get_height()).is_greater_equal(n)
+	var total := 0.0
+	var worst := 0.0
+	for i in n:
+		var o := img.get_pixel(i % KitMesh.TEX_W, i / KitMesh.TEX_W).r
+		total += absf(o)
+		worst = maxf(worst, absf(o))
+	assert_float(total / n).is_between(0.001, 0.01)
+	assert_float(worst).is_less(0.03)

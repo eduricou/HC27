@@ -99,7 +99,8 @@ Regles, constants i toleràncies: docs/regles.md. Decisions: docs/decisions/.
   no en fan ombra (shadow_caster_mask). Efectes del partit (xarxa, públic): StadiumFx.
 - Jugadors (fase 4, docs/decisions/0007): PlayerView (posició i orientació, de MatchView)
   conté un PlayerRig (src/game/players/): cos de Quaternius (CC0) amb l'equipació pintada pel
-  shader player_kit (KitMesh: textura de dades per vèrtex llegida amb VERTEX_ID), AnimationTree
+  shader player_kit (KitMesh: textura de dades per vèrtex llegida amb VERTEX_ID; el mateix
+  shader fa les complexions de PlayerRig.BUILDS amb el relleu de KitMesh.shape_texture), AnimationTree
   (locomoció sincronitzada: ritme = velocitat / passa, peus sense lliscar), PostureModifier3D
   i IK de cames i braços. El pal (StickMesh, fet amb codi) toca la pilota amb la cara del
   ganxo al punt de control de la simulació (stickPt/stickWorld) o, si la porta, on es veu

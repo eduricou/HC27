@@ -118,6 +118,25 @@ Ho comprova `test_els_peus_no_rellisquen`, que hi posa un límit del 15 %.
   - **Porters:** no en porten, perquè ja els tapen les xuteres.
   - **Peu de sota:** es pinta del color del mitjó, i si en surt un tros pel coll de la sabatilla, no es nota.
   - **Cost:** cap ombra pròpia (ja la fa el peu). La mesura del partit sencer (Alta, de nit) dona 139 fps, i cap fotograma passa de 16,4 ms.
+- **Revisió (7/11/2026, complexions):** l'usuari va dir que els jugadors eren massa musculats i que en un equip de Papis hi ha cossos molt diferents.
+  - **Per què no un model nou:** el paquet gratuït de Quaternius només té el cos de superheroi (els cossos normals són al de pagament), i sense Blender no se'n poden fer de nous. Per això el cos es deforma al shader i la malla no es toca.
+  - **Músculs** (`KitMesh.shape_texture`):
+    - un suavitzat de Taubin de la malla (30 passades, 46 ms en obrir el joc) dona, per a cada vèrtex, quant s'ha de moure per perdre el relleu dels músculs sense encongir el cos;
+    - el shader (`player_kit.gdshader`) mou el vèrtex al llarg de la normal i, a més, aprima els trapezis, les espatlles, el pit, els dorsals, els braços i les cuixes;
+    - la pell perd el relleu pintat de la textura, i la samarreta queda llisa.
+  - **Complexió de cada jugador** (`PlayerRig.BUILDS`): prim i alt, normal, baix i fort, panxut, gran, atlètic, i baix i prim. Cada una té:
+    - l'alçada, que va del 93 % al 106 % (el cos s'escala, i la passa es corregeix perquè els peus no rellisquin);
+    - el gruix, la panxa i quant múscul perd.
+  - **Repartiment:** la complexió es tria pel dorsal i l'equip, i és sempre la mateixa per a cada jugador.
+  - **Què no es toca:** el cap, les mans i els peus, on van el casc, els guants i les sabatilles. Les zones es difuminen segons la posició en repòs perquè no s'obrin plecs entre les parts del cos.
+  - **Rendiment** (partit sencer):
+
+    | Qualitat | Fps de mitjana | Pitjor fotograma |
+    |---|---|---|
+    | Alta, de nit | 127–137 | 19–21 ms |
+    | Baixa, de tarda | 203 | 13 ms |
+
+    Una de les tres mesures a Alta va tenir una aturada puntual de 76 ms, que no es va repetir.
 
 ### 6. Accions
 
@@ -152,7 +171,6 @@ Ho comprova `test_els_peus_no_rellisquen`, que hi posa un límit del 15 %.
   - Ara el cop és procedural: el pal fa el gest de la web i els braços el segueixen amb IK.
   - Si s'instal·la Blender, es poden afegir com a OneShot sense tocar res més.
 - **L'estirada del porter** fa servir una animació de lliscar (`Slide_Start`) que només s'hi assembla.
-- **Els jugadors no tenen variacions de complexió.** La pell, els cabells, la barba i el dorsal sí que canvien.
 
 ## Mesures
 

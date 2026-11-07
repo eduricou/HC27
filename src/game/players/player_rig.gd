@@ -43,10 +43,24 @@ const RIGHT_LOW := 0.42
 ## Arbre: output ← shot (OneShot: action) ← move (Blend2: idle | rate ← loco).
 const GAIT: Array[String] = ["walk", "jog", "sprint"]
 
+## Complexions dels Papis: [alçada (escala), gruix (m), panxa (m), músculs llisos (0–1)].
+## El model és un superheroi: tots en perden el relleu i les espatlles (shaders/player_kit).
+const BUILDS: Array[Vector4] = [
+	Vector4(1.04, -0.012, 0.015, 1.0),  # prim i alt
+	Vector4(1.0, -0.002, 0.05, 0.95),  # normal
+	Vector4(0.96, 0.012, 0.075, 0.9),  # baix i fort
+	Vector4(0.99, 0.01, 0.13, 1.0),  # panxut
+	Vector4(1.04, 0.024, 0.1, 0.95),  # gran
+	Vector4(1.01, -0.005, 0.02, 0.6),  # atlètic
+	Vector4(0.95, -0.009, 0.04, 1.0),  # baix i prim
+]
+
 ## Recursos compartits entre tots els jugadors (textura de dades, materials, malles).
 static var _cache := {}
 
 var is_gk := false
+## Alçada respecte al model (escala del cos).
+var height := 1.0
 var skeleton: Skeleton3D
 var body_mesh: MeshInstance3D
 var tree: AnimationTree
@@ -86,6 +100,12 @@ func setup(p: Player, def: TeamData) -> void:
 	body_mesh.material_override = _kit_material(def, is_gk)
 	body_mesh.set_instance_shader_parameter("skin_tone", skin_tone(Color(Constants.SKINS[p.skin])))
 	body_mesh.set_instance_shader_parameter("number", p.num)
+	var b := build_of(p)
+	height = b.x
+	_body.scale = Vector3.ONE * height
+	body_mesh.set_instance_shader_parameter("girth", b.y)
+	body_mesh.set_instance_shader_parameter("belly", b.z)
+	body_mesh.set_instance_shader_parameter("soft", b.w)
 	var hair := Color(Constants.HAIRS[p.hair])
 	var brows := skeleton.get_node_or_null("Eyebrows") as MeshInstance3D
 	if brows:
@@ -103,6 +123,14 @@ func setup(p: Player, def: TeamData) -> void:
 	_build_stick(def)
 	_build_animation()
 	_build_ik()
+
+
+## Complexió de `p` (una de BUILDS, sempre la mateixa per a cada jugador, i l'alçada una
+## mica diferent dins de cada complexió): [alçada, gruix, panxa, músculs llisos].
+static func build_of(p: Player) -> Vector4:
+	var b := BUILDS[(p.num * 3 + p.team.idx * 2) % BUILDS.size()]
+	b.x += ((p.num * 7 + p.team.idx) % 5 - 2) * 0.012
+	return b
 
 
 ## Dels Papis, quatre de cada deu porten barba (sempre els mateixos).
@@ -193,6 +221,8 @@ static func gait_rate(v: float) -> float:
 ## Un fotograma: `speed` és la velocitat del jugador a la vista (m/s) i `ball`, on es veu
 ## la pilota (global) si la porta aquest jugador (si no, Vector3.INF).
 func animate(p: Player, speed: float, delta: float, ball := Vector3.INF) -> void:
+	# Les animacions són del model a mida real: un jugador més alt fa la passa més llarga.
+	speed /= height
 	tree.set(&"parameters/loco/blend_position", speed)
 	tree.set(&"parameters/rate/scale", gait_rate(speed))
 	tree.set(&"parameters/move/blend_amount", smoothstep(0.15, _gs(GAIT[0]), speed))
@@ -330,7 +360,7 @@ func _place_stick(swing: float, hold: float, ball: Vector3, delta: float) -> voi
 		var y := (arm - d * arm.dot(d)).normalized()
 		var hb := Basis(y.cross(-d), y, -d)
 		grip.hand_basis[i] = hb
-		grips[i].position = grip_points[i] - hb * GripModifier3D.hole(i)
+		grips[i].position = grip_points[i] - hb * GripModifier3D.hole(i) * height
 	grip.hold.fill(hold)
 	if hold < 0.999:
 		# Amb la mà dreta: el pal amunt, agafat per dalt.
@@ -377,12 +407,14 @@ func _kit_material(def: TeamData, gk: bool) -> ShaderMaterial:
 		return _cache[key]
 	if not _cache.has("vdata"):
 		_cache["vdata"] = KitMesh.data_texture(body_mesh.mesh, body_mesh.skin, skeleton)
+		_cache["vshape"] = KitMesh.shape_texture(body_mesh.mesh)
 		_cache["landmarks"] = KitMesh.landmarks(skeleton)
 	var lm: Dictionary = _cache["landmarks"]
 	var kit: Dictionary = def.gk_kit if gk else def.kit
 	var m := ShaderMaterial.new()
 	m.shader = KIT_SHADER
 	m.set_shader_parameter("vdata", _cache["vdata"])
+	m.set_shader_parameter("vshape", _cache["vshape"])
 	m.set_shader_parameter("skin_light", load(TEX % "T_Superhero_Male_Light"))
 	m.set_shader_parameter("skin_dark", load(TEX % "T_Superhero_Male_Dark"))
 	m.set_shader_parameter("normal_tex", load(TEX % "T_Superhero_Male_Normal"))
