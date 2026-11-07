@@ -185,6 +185,30 @@ void fragment() {
 		float mid = texture(noise_tex, p * 0.019 + 0.7).b;
 		float patch = big * 0.6 + mid * 0.4;
 		col = mix(vec3(0.43, 0.42, 0.28), vec3(0.33, 0.39, 0.22), smoothstep(0.2, 0.8, patch));
+		// Lluny del camp, parcel·les de conreu (prats, rostolls, horta, terra llaurada) amb
+		// marges més foscos, girades una mica perquè no quadrin amb el camp.
+		float far = smoothstep(150.0, 260.0, length(p - vec2(0.0, -20.0)));
+		if (far > 0.0) {
+			vec2 q = mat2(vec2(0.96, 0.28), vec2(-0.28, 0.96)) * p;
+			vec2 size = vec2(130.0, 85.0);
+			vec2 cell = floor(q / size);
+			float h = fract(sin(dot(cell, vec2(12.9898, 78.233))) * 43758.5453);
+			vec3 plot = col;
+			if (h < 0.25) {
+				plot = vec3(0.37, 0.41, 0.24);
+			} else if (h < 0.45) {
+				plot = vec3(0.48, 0.46, 0.3);
+			} else if (h < 0.6) {
+				plot = vec3(0.43, 0.38, 0.28);
+			} else if (h < 0.72) {
+				plot = vec3(0.31, 0.37, 0.21);
+			}
+			plot *= 0.94 + 0.12 * texture(noise_tex, p * 0.05 + h).g;
+			vec2 e = abs(fract(q / size) - 0.5) * size;
+			float edge = 1.0 - smoothstep(0.0, 1.5 + fw * 2.0, min(size.x * 0.5 - e.x, size.y * 0.5 - e.y));
+			plot = mix(plot, vec3(0.27, 0.32, 0.18), edge * 0.45);
+			col = mix(col, plot, far * 0.75);
+		}
 		col *= 0.94 + 0.08 * (n1 - 0.5) + 0.05 * (n2 - 0.5) + 0.16 * grain;
 	}
 	ALBEDO = pow(col, vec3(2.2));

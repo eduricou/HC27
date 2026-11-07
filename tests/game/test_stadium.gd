@@ -266,3 +266,21 @@ func test_arbres_amb_multimesh() -> void:
 	for mmi: MultiMeshInstance3D in st.get_node("Carrer/Arbres").get_children():
 		street += mmi.multimesh.instance_count
 	assert_int(street).is_equal(StadiumLayout.street_trees().size())
+
+
+## La càmera ampla (la de per defecte) veu terra fins a l'horitzó: el terra i el pla de
+## tall arriben més lluny que on la boira ja és plena, i els arbres de lluny no són al talús
+## de l'est ni a prop del camp.
+func test_l_horitzo_no_es_talla() -> void:
+	var st: Stadium = auto_free(STADIUM.instantiate())
+	add_child(st)
+	var half := Stadium.GROUND_SIZE * 0.5
+	var env: Environment = (st.get_node("Entorn") as WorldEnvironment).environment
+	assert_float(half).is_greater(env.fog_depth_end)
+	var cam: CameraRig = auto_free(CameraRig.new())
+	add_child(cam)
+	assert_float(cam.far).is_greater(half)
+	for t in StadiumLayout.far_trees():
+		var d := Vector2(t.x, t.y + 20.0).length()
+		assert_float(d).is_greater(150.0)
+		assert_bool(absf(t.x) < 200.0 and t.y > 0.0 and t.y < 230.0).is_false()

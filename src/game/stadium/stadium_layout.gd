@@ -135,6 +135,27 @@ static func vegetation(seed_value: int = 27) -> Dictionary:
 	return {"pines": pines, "bushes": bushes}
 
 
+## Arbres de lluny, per grups, entre 190 m i 1,4 km del camp (Vector4: x, y, z, escala;
+## w > 0 pi, w < 0 arbre de fulla). No n'hi ha al talús de l'est (es veuria de la càmera
+## TV) ni a prop del camp i del carrer.
+static func far_trees(seed_value: int = 61) -> Array[Vector4]:
+	var rng := RandomNumberGenerator.new()
+	rng.seed = seed_value
+	var out: Array[Vector4] = []
+	for g in 46:
+		var a := rng.randf() * TAU
+		var r := sqrt(rng.randf_range(190.0 * 190.0, 1400.0 * 1400.0))
+		var c := Vector2(cos(a) * r, -20.0 + sin(a) * r)
+		if absf(c.x) < 200.0 and c.y > 0.0 and c.y < 260.0:
+			continue
+		var pines := rng.randf() < 0.6
+		for k in rng.randi_range(3, 9):
+			var o := Vector2(rng.randf_range(-28.0, 28.0), rng.randf_range(-28.0, 28.0))
+			var s := rng.randf_range(0.8, 1.25)
+			out.append(Vector4(c.x + o.x, c.y + o.y, 0.0, s if pines else -s))
+	return out
+
+
 ## Arbres del carrer Galícia, a la franja de darrere la tanca del passeig.
 static func street_trees() -> Array[Vector2]:
 	var out: Array[Vector2] = []

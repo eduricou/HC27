@@ -10,7 +10,7 @@ global uniform float night;
 // Direcció cap al sol, en coordenades de Godot (la posa src/game/stadium/stadium.gd).
 uniform vec3 sun_dir = vec3(-0.82, 0.51, -0.26);
 // Color de la boira de l'entorn (stadium.gd, DAY i NIGHT): la base de les muntanyes s'hi fon.
-const vec3 FOG_DAY = vec3(0.84, 0.83, 0.78);
+const vec3 FOG_DAY = vec3(0.74, 0.78, 0.8);
 const vec3 FOG_NIGHT = vec3(0.07, 0.09, 0.14);
 
 float hs(vec2 p) {

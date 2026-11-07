@@ -12,15 +12,20 @@ extends RefCounted
 const BARK := Color("5a4535")
 const BARK_PINE := Color("6b4a35")
 const SHADER := preload("res://shaders/tree.gdshader")
-## Resolució de cada massa de fulles.
-const RINGS := 7
-const SEGMENTS := 12
+## Resolució de cada massa de fulles i de les branques (detall normal i baix, per als
+## arbres de lluny).
+const RINGS := [7, 4]
+const SEGMENTS := [12, 7]
+const SIDES := [1.0, 0.6]
 
 static var _noise: FastNoiseLite
+## Detall de les malles que es fan ara (0 normal, 1 baix).
+static var _lod := 0
 
 
-## Pi pinyer de la variant `seed_value`.
-static func pine(seed_value: int, foliage: Material) -> ArrayMesh:
+## Pi pinyer de la variant `seed_value`. Amb `low_detail`, amb menys polígons (de lluny).
+static func pine(seed_value: int, foliage: Material, low_detail := false) -> ArrayMesh:
+	_lod = 1 if low_detail else 0
 	var rng := RandomNumberGenerator.new()
 	rng.seed = seed_value
 	var bark := MeshPart.new()
@@ -68,7 +73,8 @@ static func pine(seed_value: int, foliage: Material) -> ArrayMesh:
 
 
 ## Arbre de fulla del carrer (lledoner o plàtan): tronc curt i copa rodona.
-static func broadleaf(seed_value: int, foliage: Material) -> ArrayMesh:
+static func broadleaf(seed_value: int, foliage: Material, low_detail := false) -> ArrayMesh:
+	_lod = 1 if low_detail else 0
 	var rng := RandomNumberGenerator.new()
 	rng.seed = seed_value
 	var bark := MeshPart.new()
@@ -105,6 +111,7 @@ static func broadleaf(seed_value: int, foliage: Material) -> ArrayMesh:
 
 ## Arbust: dues o tres masses a tocar de terra.
 static func bush(seed_value: int, foliage: Material) -> ArrayMesh:
+	_lod = 0
 	var rng := RandomNumberGenerator.new()
 	rng.seed = seed_value
 	var leaves := MeshPart.new()
@@ -175,6 +182,7 @@ static func _limb(
 ) -> void:
 	var rows: Array[PackedVector3Array] = []
 	var cols: Array[PackedColorArray] = []
+	sides = maxi(4, roundi(sides * SIDES[_lod]))
 	for i in path.size():
 		var t := (path[mini(i + 1, path.size() - 1)] - path[maxi(i - 1, 0)]).normalized()
 		var ref := Vector3.RIGHT if absf(t.x) < 0.8 else Vector3.BACK
@@ -206,12 +214,14 @@ static func _blob(
 	var rows: Array[PackedVector3Array] = []
 	var cols: Array[PackedColorArray] = []
 	var refs := PackedVector3Array()
-	for i in RINGS + 1:
-		var el := PI * 0.5 - PI * i / RINGS
+	var rings: int = RINGS[_lod]
+	var segments: int = SEGMENTS[_lod]
+	for i in rings + 1:
+		var el := PI * 0.5 - PI * i / rings
 		var ring := PackedVector3Array()
 		var rc := PackedColorArray()
-		for j in SEGMENTS:
-			var az := TAU * j / SEGMENTS
+		for j in segments:
+			var az := TAU * j / segments
 			var dir := Vector3(cos(el) * cos(az), sin(el), cos(el) * sin(az))
 			var q := dir * 1.6 + off
 			var bump := n.get_noise_3d(q.x, q.y, q.z)

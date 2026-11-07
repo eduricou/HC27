@@ -41,7 +41,7 @@ const DAY := {
 	"sky_ambient": 1.0,
 	"ambient_color": Color(0.5, 0.55, 0.6),
 	"exposure": 1.0,
-	"fog": Color(0.84, 0.83, 0.78),
+	"fog": Color(0.74, 0.78, 0.8),
 }
 const NIGHT := {
 	"spot_energy": 22.0,
@@ -56,6 +56,8 @@ const NIGHT := {
 	"lamp": 9.0,
 	"street_lamp": 5.0,
 }
+## Mida del terra (m): arriba fins a l'horitzó des de les càmeres altes.
+const GROUND_SIZE := 8000.0
 ## Focus: obertura (graus) i abast. Cada torre il·lumina la meitat de l'altra banda.
 const SPOT_ANGLE := 62.0
 const SPOT_RANGE := 115.0
@@ -192,9 +194,11 @@ func _build_lighting() -> void:
 	_env.glow_blend_mode = Environment.GLOW_BLEND_MODE_SOFTLIGHT
 	_env.fog_enabled = true
 	_env.fog_mode = Environment.FOG_MODE_DEPTH
-	_env.fog_depth_begin = 110.0
-	_env.fog_depth_end = 430.0
-	_env.fog_density = 0.8
+	# Calitja suau fins a l'horitzó: el terra arriba fins a les muntanyes del cel, i lluny
+	# té el mateix color que el peu de les muntanyes (sky.gdshader).
+	_env.fog_depth_begin = 150.0
+	_env.fog_depth_end = 3000.0
+	_env.fog_density = 0.45
 	_env.fog_sky_affect = 0.0
 	_env.ssao_radius = 1.2
 	_env.ssao_intensity = 1.6
@@ -318,7 +322,7 @@ func _ground() -> MeshInstance3D:
 	var mi := MeshInstance3D.new()
 	mi.name = "Terra"
 	var pm := PlaneMesh.new()
-	pm.size = Vector2(520.0, 400.0)
+	pm.size = Vector2(GROUND_SIZE, GROUND_SIZE)
 	mi.mesh = pm
 	mi.position = Coords.to_view(0.0, -60.0, 0.0)
 	mi.material_override = _turf_mat
@@ -730,6 +734,21 @@ func _vegetation() -> Node3D:
 		bushes.append(TreeMesh.bush(31 + i, _foliage()))
 	root.add_child(_forest("Pins", pines, veg["pines"], true))
 	root.add_child(_forest("Arbustos", bushes, veg["bushes"], false))
+	# Grups d'arbres de lluny, amb menys polígons i sense ombra.
+	var far_pines: Array[Vector4] = []
+	var far_leafy: Array[Vector4] = []
+	for t in L.far_trees():
+		if t.w > 0.0:
+			far_pines.append(t)
+		else:
+			far_leafy.append(Vector4(t.x, t.y, t.z, -t.w))
+	var lp: Array[ArrayMesh] = []
+	var lb: Array[ArrayMesh] = []
+	for i in 2:
+		lp.append(TreeMesh.pine(71 + i, _foliage(), true))
+		lb.append(TreeMesh.broadleaf(81 + i, _foliage(), true))
+	root.add_child(_forest("PinsLluny", lp, far_pines, false))
+	root.add_child(_forest("ArbresLluny", lb, far_leafy, false))
 	return root
 
 

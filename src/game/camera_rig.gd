@@ -52,7 +52,8 @@ var _pc_side := 1.0
 
 func _ready() -> void:
 	near = 0.5
-	far = 900.0
+	# Fins a l'horitzó (el terra arriba a 4 km): la càmera ampla el veu.
+	far = 6000.0
 	_apply()
 
 
