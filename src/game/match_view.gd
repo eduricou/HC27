@@ -19,6 +19,9 @@ const RECEIVE_NEAR := 5.0
 const RECEIVE_FAR := 9.0
 const LOOSE_NEAR := 2.5
 const LOOSE_FAR := 4.5
+## Al penal córner: els atacants són a la vora de l'àrea (14,63 m) i els defensors, a la
+## porteria.
+const PC_RANGE := 18.0
 
 var runner: MatchRunner
 
@@ -135,10 +138,16 @@ func _apply(f: float, delta: float = 0.0) -> void:
 ## Si el jugador `p` és a la jugada (1: ajupit i amb el pal a terra) o no (0: més dret i
 ## amb el pal aixecat). Ho és el porter, sempre; qui porta la pilota; un rival que s'acosta
 ## a qui la porta per robar-la; i qui va a buscar una pilota lliure o n'espera la passada.
-## Els companys de qui porta la pilota no.
+## Els companys de qui porta la pilota no. Al penal córner, tots els que el juguen (els que
+## són a menys de PC_RANGE m de la porteria) van ajupits i a punt fins que s'acaba.
 static func engagement(s: MatchState, p: Player) -> float:
 	if p.is_gk:
 		return 1.0
+	# Del senyal fins que acaba la jugada del córner (pc_live, després de la passada).
+	if (s.state == &"pc" or s.pc_live) and s.pc_team:
+		var gx := s.pc_team.dir * Constants.HL
+		if Vector2(p.x - gx, p.y).length() < PC_RANGE:
+			return 1.0
 	var ball := s.ball
 	var own := ball.owner
 	if own == p:

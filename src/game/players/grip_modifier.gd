@@ -26,12 +26,8 @@ var rig: Node3D
 var hold := PackedFloat32Array([1.0, 1.0])
 ## Orientació de cada mà quan agafa el pal.
 var hand_basis: Array[Basis] = [Basis(), Basis()]
-## On eren les espatlles en aquest fotograma, amb la postura ja aplicada (coordenades del
-## rig). Fora dels modificadors l'esquelet només dona la postura de l'animació.
-var shoulders: Array[Vector3] = [Vector3(0.2, 1.3, -0.4), Vector3(-0.2, 1.3, -0.4)]
 
 var _hands := PackedInt32Array()
-var _shoulders := PackedInt32Array()
 ## Per a cada mà: ossos dels dits i la rotació local que tenen amb el puny tancat.
 var _bones: Array[PackedInt32Array] = []
 var _closed: Array[Array] = []
@@ -48,10 +44,8 @@ func _process_modification_with_delta(_delta: float) -> void:
 		return
 	if _hands.is_empty():
 		_setup(sk)
-	var to_skel_xf := sk.global_transform.affine_inverse() * rig.global_transform
-	var to_skel := to_skel_xf.basis
+	var to_skel := (sk.global_transform.affine_inverse() * rig.global_transform).basis
 	for i in 2:
-		shoulders[i] = to_skel_xf.affine_inverse() * sk.get_bone_global_pose(_shoulders[i]).origin
 		var w := hold[i]
 		if w <= 0.001:
 			continue
@@ -71,7 +65,6 @@ func _setup(sk: Skeleton3D) -> void:
 	for i in 2:
 		var s := SIDES[i]
 		_hands.append(sk.find_bone("hand_" + s))
-		_shoulders.append(sk.find_bone("upperarm_" + s))
 		var bones := PackedInt32Array()
 		var closed := []
 		for f in FINGERS:

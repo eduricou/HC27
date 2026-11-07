@@ -34,9 +34,10 @@ const TOP_HAND := Vector3(0.04, 1.0, -0.4)
 ## alçada, davant i a la dreta, i la canya cap a TOP_HAND_UP.
 const CARRY_BLADE := Vector3(0.3, 0.3, -0.58)
 const TOP_HAND_UP := Vector3(-0.02, 1.02, -0.26)
-## La mà dreta baixa per la canya fins on li arriba el braç (metres de l'espatlla al puny),
-## però no més avall que RIGHT_LOW metres del taló.
-const RIGHT_REACH := 0.555
+## Fins on arriba el braç, de l'espatlla al puny (metres, a l'alçada del model; gairebé
+## estirat). La mà dreta baixa per la canya fins on li arriba, però no més avall que
+## RIGHT_LOW metres del taló.
+const ARM_REACH := 0.52
 const RIGHT_LOW := 0.42
 
 ## Locomoció: caminar, córrer i esprintar es mesclen segons la velocitat, sincronitzats
@@ -90,6 +91,9 @@ var _action: AnimationNodeAnimation
 var _action_left := 0.0
 var _last_stun := 0.0
 var _hand_r := -1
+var _shoulder_bones := PackedInt32Array()
+## El que necessita el pal d'aquest fotograma: [swing, hold, pilota, delta] (StickPlacer).
+var _stick_args: Array = [0.0, 1.0, Vector3.INF, 0.0]
 ## Quant s'aparta el pal del punt de control de la simulació per anar a la pilota que es
 ## veu (suavitzat).
 var _ball_off := Vector3.ZERO
@@ -103,6 +107,9 @@ func setup(p: Player, def: TeamData) -> void:
 	add_child(_body)
 	skeleton = _body.get_node("Armature/Skeleton3D")
 	_hand_r = skeleton.find_bone("hand_r")
+	_shoulder_bones = PackedInt32Array(
+		[skeleton.find_bone("upperarm_l"), skeleton.find_bone("upperarm_r")]
+	)
 	body_mesh = skeleton.get_node("SuperHero_Male")
 	body_mesh.material_override = _kit_material(def, is_gk)
 	body_mesh.set_instance_shader_parameter("skin_tone", skin_tone(Color(Constants.SKINS[p.skin])))
@@ -248,9 +255,10 @@ func animate(p: Player, speed: float, delta: float, ball := Vector3.INF, engaged
 	# hi afegim.
 	# Ajupit (a la jugada) o més dret (lluny), segons `low`.
 	var run := clampf(speed / 6.0, 0.0, 1.0)
-	var lean := lerpf(0.25, 0.12, run) if is_gk else lerpf(0.32, 0.1, run)
-	var hip := lerpf(0.3, 0.12, run) if is_gk else lerpf(0.6, 0.15, run)
-	var drop := lerpf(0.2, 0.08, run) if is_gk else lerpf(0.24, 0.05, run)
+	# A la jugada, també corrent: amb la pilota a 72 cm, si no, les mans no arriben al pal.
+	var lean := lerpf(0.25, 0.12, run) if is_gk else lerpf(0.32, 0.28, run)
+	var hip := lerpf(0.3, 0.12, run) if is_gk else lerpf(0.6, 0.45, run)
+	var drop := lerpf(0.2, 0.08, run) if is_gk else lerpf(0.24, 0.2, run)
 	var twist := 0.2
 	var roll := lerpf(0.25, 0.1, run)
 	lean = lerpf(lerpf(0.1, 0.04, run), lean, low)
@@ -265,7 +273,8 @@ func animate(p: Player, speed: float, delta: float, ball := Vector3.INF, engaged
 	# El tronc gira una mica cap a l'esquerra i baixa l'espatlla dreta, cap al pal.
 	posture.twist = lerpf(posture.twist, 0.0 if free else twist, k)
 	posture.roll = lerpf(posture.roll, 0.0 if free else roll, k)
-	_place_stick(p.swing, ik.influence, ball, delta)
+	# El pal es col·loca en actualitzar l'esquelet (StickPlacer), amb la postura ja feta.
+	_stick_args = [p.swing, ik.influence, ball, delta]
 
 
 ## Partit nou (es reaprofita el jugador): talla l'acció que feia.
@@ -317,6 +326,10 @@ func _build_ik() -> void:
 		leg_ik.set_end_bone_name(i, "foot_" + s)
 		leg_ik.set_target_node(i, leg_ik.get_path_to(feet[i]))
 		leg_ik.set_pole_node(i, leg_ik.get_path_to(feet[i + 2]))
+	var placer := StickPlacer.new()
+	placer.name = "Pal"
+	placer.rig = self
+	skeleton.add_child(placer)
 	for i in 4:
 		var m := Marker3D.new()
 		m.name = ["MaEsquerra", "MaDreta", "ColzeEsquerre", "ColzeDret"][i]
@@ -341,12 +354,19 @@ func _build_ik() -> void:
 	skeleton.add_child(grip)
 
 
+## El pal i els objectius de les mans d'aquest fotograma (ho crida StickPlacer, amb la
+## postura ja aplicada a l'esquelet).
+func place_stick_now() -> void:
+	_place_stick(_stick_args[0], _stick_args[1], _stick_args[2], _stick_args[3])
+
+
 ## Pal: la pilota toca la cara del fons del ganxo al punt de control (ref: stickWorld():
 ## amb el cop, el pal va enrere, a la dreta i amunt). Quan el jugador porta la pilota, el
 ## punt de control és la pilota que es veu. La canya va cap a TOP_HAND, el cap reposa a
 ## terra sense clavar-s'hi, la mà esquerra agafa dalt de tot i la dreta més avall (amb el
-## cop, s'hi acosta). Lluny de la jugada (`low` < 1), el pal va aixecat. Si les mans són
-## lliures, el pal va amb la mà dreta.
+## cop, s'hi acosta). Si les mans no hi arriben (corrent, el jugador va més dret), el pal
+## s'inclina cap al cos. Lluny de la jugada (`low` < 1), el pal va aixecat. Si les mans
+## són lliures, el pal va amb la mà dreta.
 func _place_stick(swing: float, hold: float, ball: Vector3, delta: float) -> void:
 	var k := sin((swing / 0.25) * PI) if swing > 0.0 else 0.0
 	var ctrl := CARRY_BLADE.lerp(Vector3(STICK_SIDE, 0.0, -STICK_F), low)
@@ -361,18 +381,10 @@ func _place_stick(swing: float, hold: float, ball: Vector3, delta: float) -> voi
 		off = _ball_off.lerp(off, 1.0 - exp(-delta * 30.0))
 	_ball_off = off
 	ctrl += off
-	var top_want := TOP_HAND_UP.lerp(TOP_HAND, low) + Vector3(0.25, 0.35, 0.2) * k
-	var d := (top_want - ctrl).normalized()
-	var basis := StickMesh.place_basis(d, Vector3.LEFT)
-	var r := BallView.RADIUS
-	var origin := ctrl + Vector3(0.0, r, 0.0) - basis * StickMesh.ball_contact(r)
-	# El cap no es clava a terra.
-	var low := INF
-	for q in StickMesh.bottom_points():
-		low = minf(low, origin.y + (basis * q).y)
-	origin.y -= minf(0.0, low)
-	var xf := Transform3D(basis, origin)
-	blade = xf * StickMesh.ball_contact(r)
+	var top_want := (TOP_HAND_UP.lerp(TOP_HAND, low) + Vector3(0.25, 0.35, 0.2) * k) * height
+	var d := _reachable((top_want - ctrl).normalized(), ctrl, k)
+	var xf := _stick_xf(d, ctrl)
+	blade = xf * StickMesh.ball_contact(BallView.RADIUS)
 	var heel := xf * StickMesh.heel()
 	grip_points[0] = heel + d * (StickMesh.LENGTH - 0.05)
 	grip_points[1] = heel + d * _right_grip(heel, d, k)
@@ -387,7 +399,7 @@ func _place_stick(swing: float, hold: float, ball: Vector3, delta: float) -> voi
 	grip.hold.fill(hold)
 	if hold < 0.999:
 		# Amb la mà dreta: el pal amunt, agafat per dalt.
-		var hand := _body.transform * skeleton.get_bone_global_pose(_hand_r)
+		var hand := _bone_local(_hand_r)
 		var up := Vector3(0.15, 1.0, 0.1).normalized()
 		var fb := StickMesh.place_basis(up, Vector3.LEFT)
 		var top := StickMesh.heel() + StickMesh.shaft_dir() * (StickMesh.LENGTH - 0.08)
@@ -396,20 +408,71 @@ func _place_stick(swing: float, hold: float, ball: Vector3, delta: float) -> voi
 	stick.transform = xf
 
 
-## On era l'espatlla `i` (0 esquerra, 1 dreta) a l'últim fotograma (coordenades locals).
+## Pal amb la canya en la direcció `d` i la cara del ganxo tocant una pilota a `ctrl`
+## (a terra), sense que el cap es clavi a terra.
+static func _stick_xf(d: Vector3, ctrl: Vector3) -> Transform3D:
+	var basis := StickMesh.place_basis(d, Vector3.LEFT)
+	var r := BallView.RADIUS
+	var origin := ctrl + Vector3(0.0, r, 0.0) - basis * StickMesh.ball_contact(r)
+	var lowest := INF
+	for q in StickMesh.bottom_points():
+		lowest = minf(lowest, origin.y + (basis * q).y)
+	origin.y -= minf(0.0, lowest)
+	return Transform3D(basis, origin)
+
+
+## La direcció `d` de la canya, o, si les mans no hi arriben, la més semblant inclinada cap
+## a les espatlles amb què hi arriben totes dues (cerca binària).
+func _reachable(d: Vector3, ctrl: Vector3, k: float) -> Vector3:
+	if _reaches(d, ctrl, k):
+		return d
+	var mid := (_shoulder(0) + _shoulder(1)) * 0.5
+	var toward := (mid - ctrl).normalized()
+	var lo := 0.0
+	var hi := 1.0
+	for i in 8:
+		var t := (lo + hi) * 0.5
+		if _reaches(d.lerp(toward, t).normalized(), ctrl, k):
+			hi = t
+		else:
+			lo = t
+	return d.lerp(toward, hi).normalized()
+
+
+## Si, amb la canya en la direcció `d`, totes dues mans arriben al pal.
+func _reaches(d: Vector3, ctrl: Vector3, k: float) -> bool:
+	var reach := ARM_REACH * height
+	var heel := _stick_xf(d, ctrl) * StickMesh.heel()
+	if (heel + d * (StickMesh.LENGTH - 0.05)).distance_to(_shoulder(0)) > reach:
+		return false
+	return (heel + d * _right_grip(heel, d, k)).distance_to(_shoulder(1)) <= reach
+
+
+## On és l'espatlla `i` (0 esquerra, 1 dreta), amb la postura ja aplicada (coordenades
+## locals).
 func _shoulder(i: int) -> Vector3:
-	return grip.shoulders[i]
+	return _bone_local(_shoulder_bones[i]).origin
+
+
+## Transformació d'un os en les coordenades locals del jugador, tal com és ara.
+func _bone_local(bone: int) -> Transform3D:
+	return (
+		global_transform.affine_inverse()
+		* skeleton.global_transform
+		* (skeleton.get_bone_global_pose(bone))
+	)
 
 
 ## Fins on baixa la mà dreta per la canya (metres des del taló): tan avall com li arribi
 ## el braç des de l'espatlla, entre RIGHT_LOW i una mica sota la mà de dalt. Amb el cop
 ## (k), les mans s'ajunten.
 func _right_grip(heel: Vector3, d: Vector3, k: float) -> float:
-	var hi := StickMesh.LENGTH - 0.16
+	var hi := StickMesh.LENGTH - 0.12
 	var sh := _shoulder(1)
 	var c := (sh - heel).dot(d)
 	var gap := (heel + d * c).distance_to(sh)
-	var s := c - sqrt(maxf(0.0, RIGHT_REACH * RIGHT_REACH - gap * gap))
+	var reach := ARM_REACH * height * 0.98
+	var s := c - sqrt(maxf(0.0, reach * reach - gap * gap))
 	return lerpf(clampf(s, RIGHT_LOW, hi), hi, k)
 
 
