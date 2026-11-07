@@ -30,6 +30,10 @@ const STICK_SIDE := 0.3
 ## Cap on va la part de dalt del pal (la mà esquerra) quan no hi ha cop, en coordenades
 ## locals.
 const TOP_HAND := Vector3(0.04, 1.0, -0.4)
+## Lluny de la jugada, el jugador va més dret i porta el pal aixecat: la pala a aquesta
+## alçada, davant i a la dreta, i la canya cap a TOP_HAND_UP.
+const CARRY_BLADE := Vector3(0.3, 0.3, -0.58)
+const TOP_HAND_UP := Vector3(-0.02, 1.02, -0.26)
 ## La mà dreta baixa per la canya fins on li arriba el braç (metres de l'espatlla al puny),
 ## però no més avall que RIGHT_LOW metres del taló.
 const RIGHT_REACH := 0.555
@@ -77,6 +81,9 @@ var blade := Vector3.ZERO
 var grip_points: Array[Vector3] = [Vector3.ZERO, Vector3.ZERO]
 ## On han d'anar els canells (els objectius de la IK) i on van els colzes.
 var grips: Array[Marker3D] = []
+## Postura de joc (0: dret, amb el pal aixecat; 1: ajupit, amb el pal a terra), suavitzada.
+## −1 fins al primer fotograma.
+var low := -1.0
 
 var _body: Node3D
 var _action: AnimationNodeAnimation
@@ -218,9 +225,14 @@ static func gait_rate(v: float) -> float:
 	return maxf(v, walk * 0.6) / stride_at(v)
 
 
-## Un fotograma: `speed` és la velocitat del jugador a la vista (m/s) i `ball`, on es veu
-## la pilota (global) si la porta aquest jugador (si no, Vector3.INF).
-func animate(p: Player, speed: float, delta: float, ball := Vector3.INF) -> void:
+## Un fotograma: `speed` és la velocitat del jugador a la vista (m/s); `ball`, on es veu
+## la pilota (global) si la porta aquest jugador (si no, Vector3.INF); i `engaged`, si és
+## a la jugada (MatchView.engagement(): 1, ajupit i amb el pal a terra; 0, dret).
+func animate(p: Player, speed: float, delta: float, ball := Vector3.INF, engaged := 1.0) -> void:
+	if low < 0.0 or delta <= 0.0:
+		low = engaged
+	else:
+		low = lerpf(low, engaged, 1.0 - exp(-delta * 5.0))
 	# Les animacions són del model a mida real: un jugador més alt fa la passa més llarga.
 	speed /= height
 	tree.set(&"parameters/loco/blend_position", speed)
@@ -234,17 +246,25 @@ func animate(p: Player, speed: float, delta: float, ball := Vector3.INF) -> void
 	ik.influence = move_toward(ik.influence, 0.0 if free else 1.0, delta * 6.0)
 	# Les animacions de córrer ja porten el cos endavant: com més de pressa, menys postura
 	# hi afegim.
+	# Ajupit (a la jugada) o més dret (lluny), segons `low`.
 	var run := clampf(speed / 6.0, 0.0, 1.0)
 	var lean := lerpf(0.25, 0.12, run) if is_gk else lerpf(0.32, 0.1, run)
 	var hip := lerpf(0.3, 0.12, run) if is_gk else lerpf(0.6, 0.15, run)
 	var drop := lerpf(0.2, 0.08, run) if is_gk else lerpf(0.24, 0.05, run)
+	var twist := 0.2
+	var roll := lerpf(0.25, 0.1, run)
+	lean = lerpf(lerpf(0.1, 0.04, run), lean, low)
+	hip = lerpf(lerpf(0.1, 0.04, run), hip, low)
+	drop = lerpf(lerpf(0.03, 0.0, run), drop, low)
+	twist = lerpf(0.08, twist, low)
+	roll = lerpf(lerpf(0.06, 0.03, run), roll, low)
 	var k := 1.0 - exp(-delta * 8.0)
 	posture.lean = lerpf(posture.lean, 0.0 if free else lean, k)
 	posture.hip = lerpf(posture.hip, 0.0 if free else hip, k)
 	posture.drop = lerpf(posture.drop, 0.0 if free else drop, k)
 	# El tronc gira una mica cap a l'esquerra i baixa l'espatlla dreta, cap al pal.
-	posture.twist = lerpf(posture.twist, 0.0 if free else 0.2, k)
-	posture.roll = lerpf(posture.roll, 0.0 if free else lerpf(0.25, 0.1, run), k)
+	posture.twist = lerpf(posture.twist, 0.0 if free else twist, k)
+	posture.roll = lerpf(posture.roll, 0.0 if free else roll, k)
 	_place_stick(p.swing, ik.influence, ball, delta)
 
 
@@ -252,6 +272,7 @@ func animate(p: Player, speed: float, delta: float, ball := Vector3.INF) -> void
 func reset() -> void:
 	tree.set(&"parameters/shot/request", AnimationNodeOneShot.ONE_SHOT_REQUEST_ABORT)
 	_ball_off = Vector3.ZERO
+	low = -1.0
 	_action_left = 0.0
 	_last_stun = 0.0
 	ik.influence = 1.0
@@ -324,10 +345,12 @@ func _build_ik() -> void:
 ## amb el cop, el pal va enrere, a la dreta i amunt). Quan el jugador porta la pilota, el
 ## punt de control és la pilota que es veu. La canya va cap a TOP_HAND, el cap reposa a
 ## terra sense clavar-s'hi, la mà esquerra agafa dalt de tot i la dreta més avall (amb el
-## cop, s'hi acosta). Si les mans són lliures, el pal va amb la mà dreta.
+## cop, s'hi acosta). Lluny de la jugada (`low` < 1), el pal va aixecat. Si les mans són
+## lliures, el pal va amb la mà dreta.
 func _place_stick(swing: float, hold: float, ball: Vector3, delta: float) -> void:
 	var k := sin((swing / 0.25) * PI) if swing > 0.0 else 0.0
-	var ctrl := Vector3(STICK_SIDE + k * 0.35, k * 0.75, -(STICK_F - k * 0.55))
+	var ctrl := CARRY_BLADE.lerp(Vector3(STICK_SIDE, 0.0, -STICK_F), low)
+	ctrl += Vector3(k * 0.35, k * 0.75, k * 0.55)
 	# Amb la pilota, el pal va on es veu la pilota. La diferència amb el punt de control
 	# es suavitza perquè el pal no salti quan la guanya o la perd.
 	var off := Vector3.ZERO
@@ -338,7 +361,7 @@ func _place_stick(swing: float, hold: float, ball: Vector3, delta: float) -> voi
 		off = _ball_off.lerp(off, 1.0 - exp(-delta * 30.0))
 	_ball_off = off
 	ctrl += off
-	var top_want := TOP_HAND + Vector3(0.25, 0.35, 0.2) * k
+	var top_want := TOP_HAND_UP.lerp(TOP_HAND, low) + Vector3(0.25, 0.35, 0.2) * k
 	var d := (top_want - ctrl).normalized()
 	var basis := StickMesh.place_basis(d, Vector3.LEFT)
 	var r := BallView.RADIUS

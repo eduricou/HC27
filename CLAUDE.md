@@ -105,6 +105,8 @@ Regles, constants i toleràncies: docs/regles.md. Decisions: docs/decisions/.
   i IK de cames i braços. El pal (StickMesh, fet amb codi) toca la pilota amb la cara del
   ganxo al punt de control de la simulació (stickPt/stickWorld) o, si la porta, on es veu
   la pilota. Les mans hi van amb IK i GripModifier3D les gira i hi tanca els dits.
+  MatchView.engagement() diu qui és a la jugada: ajupit i amb el pal a terra (qui porta
+  la pilota, el rival que la va a robar, el porter) o més dret i amb el pal aixecat.
   L'equip del porter és GkGear, i les sabatilles són ShoeMesh: es mouen amb els ossos
   del peu, i els colors, de cada jugador, són instance uniforms. Tots tres fan servir
   MeshPart. La pilota és BallView: té

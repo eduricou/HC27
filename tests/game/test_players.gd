@@ -434,3 +434,63 @@ func test_relleu_dels_musculs() -> void:
 		worst = maxf(worst, absf(o))
 	assert_float(total / n).is_between(0.001, 0.01)
 	assert_float(worst).is_less(0.03)
+
+
+# --- Postura segons la jugada ------------------------------------------------------------
+
+
+## Qui porta la pilota va ajupit; els seus companys, drets; un rival s'ajup quan s'hi
+## acosta per robar-la; el porter sempre. Amb la pilota lliure, qui hi va a prop o n'espera
+## la passada.
+func test_qui_es_a_la_jugada() -> void:
+	var s := _sim.s
+	var own := s.teams[0].players[6]
+	s.ball.owner = own
+	s.ball.x = own.x
+	s.ball.y = own.y
+	var mate := s.teams[0].players[8]
+	mate.x = own.x + 2.0
+	mate.y = own.y
+	assert_float(MatchView.engagement(s, own)).is_equal(1.0)
+	assert_float(MatchView.engagement(s, mate)).is_equal(0.0)
+	var opp := s.teams[1].players[5]
+	opp.y = own.y
+	opp.x = own.x + 12.0
+	assert_float(MatchView.engagement(s, opp)).is_equal(0.0)
+	opp.x = own.x + 2.0
+	assert_float(MatchView.engagement(s, opp)).is_equal(1.0)
+	opp.x = own.x + 4.0
+	assert_float(MatchView.engagement(s, opp)).is_between(0.1, 0.9)
+	assert_float(MatchView.engagement(s, s.teams[1].gk)).is_equal(1.0)
+	# Pilota lliure: a prop sí, lluny no; qui n'espera la passada, des de més lluny.
+	s.ball.owner = null
+	assert_float(MatchView.engagement(s, mate)).is_equal(1.0)
+	mate.x = own.x + 7.0
+	assert_float(MatchView.engagement(s, mate)).is_equal(0.0)
+	s.ball.pass_target = mate
+	assert_float(MatchView.engagement(s, mate)).is_greater(0.4)
+
+
+## Fora de la jugada, el jugador va més dret i amb el pal aixecat; quan hi entra, s'ajup
+## a poc a poc i posa el pal a terra.
+func test_dret_lluny_de_la_jugada() -> void:
+	var p := _sim.s.teams[0].players[6]
+	var v := _rig_for(p)
+	for i in 60:
+		v.animate(p, 0.0, 1.0 / 60.0, Vector3.INF, 0.0)
+		await get_tree().process_frame
+	var r := v.rig
+	assert_float(r.low).is_less(0.01)
+	assert_float(r.blade.y).is_greater(0.25)
+	var up_drop := r.posture.drop
+	var up_hip := r.posture.hip
+	v.animate(p, 0.0, 1.0 / 60.0, Vector3.INF, 1.0)
+	# No canvia de cop.
+	assert_float(r.low).is_less(0.2)
+	for i in 90:
+		v.animate(p, 0.0, 1.0 / 60.0, Vector3.INF, 1.0)
+		await get_tree().process_frame
+	assert_float(r.low).is_greater(0.99)
+	assert_float(r.blade.y).is_less(BallView.RADIUS + 0.01)
+	assert_float(r.posture.drop).is_greater(up_drop + 0.1)
+	assert_float(r.posture.hip).is_greater(up_hip + 0.3)

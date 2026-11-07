@@ -137,6 +137,18 @@ Ho comprova `test_els_peus_no_rellisquen`, que hi posa un límit del 15 %.
     | Baixa, de tarda | 203 | 13 ms |
 
     Una de les tres mesures a Alta va tenir una aturada puntual de 76 ms, que no es va repetir.
+- **Revisió (7/11/2026, postura segons la jugada):** l'usuari va demanar dues postures. Ajupit i amb el pal a terra quan el jugador porta la pilota, i més dret quan no la porta. I que els que no la porten només posin el pal a terra quan s'acosten a qui la porta per robar-la.
+  - **Qui és a la jugada** (`MatchView.engagement()`, de 0 a 1):
+    - el porter, sempre;
+    - qui porta la pilota;
+    - un rival de qui la porta, que s'hi acosta: comença a ajupir-se a 5 m i ho està del tot a 3 m (les entrades es fan a menys d'1,5 m);
+    - amb la pilota lliure, qui n'espera la passada (de 9 a 5 m) i qui hi va a prop (de 4,5 a 2,5 m), perquè quan la rep ja tingui el pal a terra;
+    - els companys de qui la porta, mai.
+  - **Postura** (`PlayerRig.low`, suavitzat):
+    - **a la jugada:** és l'ajupida d'abans;
+    - **fora de la jugada:** el jugador s'inclina i doblega els malucs molt menys, gairebé no baixa la pelvis, i porta el pal aixecat, amb la pala a uns 30 cm de terra, davant i a la dreta (`CARRY_BLADE`, `TOP_HAND_UP`);
+    - el canvi entre les dues és gradual (uns 0,4 s).
+  - **Cops:** el gest del cop va per sobre de les dues postures.
 
 ### 6. Accions
 

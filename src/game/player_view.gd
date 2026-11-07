@@ -33,11 +33,14 @@ func setup(p: Player, def: TeamData) -> void:
 	rig.setup(p, def)
 
 
-## Un fotograma: `raw_speed` és la velocitat mesurada entre els dos últims passos i
-## `ball`, on es veu la pilota si la porta aquest jugador (si no, Vector3.INF).
-func animate(p: Player, raw_speed: float, delta: float, ball := Vector3.INF) -> void:
+## Un fotograma: `raw_speed` és la velocitat mesurada entre els dos últims passos; `ball`,
+## on es veu la pilota si la porta aquest jugador (si no, Vector3.INF); i `engaged`, si és
+## a la jugada (MatchView.engagement()).
+func animate(
+	p: Player, raw_speed: float, delta: float, ball := Vector3.INF, engaged := 1.0
+) -> void:
 	speed = lerpf(speed, raw_speed, 1.0 - exp(-delta * 10.0))
-	rig.animate(p, speed, delta, ball)
+	rig.animate(p, speed, delta, ball, engaged)
 
 
 func trigger(action: StringName, hands_free: bool = true) -> void:

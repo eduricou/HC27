@@ -16,5 +16,6 @@
   "porter_lluny": {"follow": [1, 1], "dist": 12, "h": 4, "ang": 35, "w": 7},
   "pal": {"follow": "pilota", "dist": 2.8, "h": 1.1, "ang": 60, "tz": 0.45, "w": 2.0},
   "pal_davant": {"follow": "pilota", "dist": 3.2, "h": 1.0, "ang": 10, "tz": 0.5, "w": 2.2},
-  "mans": {"follow": "pilota", "dist": 1.8, "h": 1.2, "ang": 50, "tz": 0.85, "w": 1.0}
+  "mans": {"follow": "pilota", "dist": 1.8, "h": 1.2, "ang": 50, "tz": 0.85, "w": 1.0},
+  "jugada": {"follow": "pilota", "dist": 9.0, "h": 3.0, "ang": 70, "tz": 0.8, "w": 12.0}
 }

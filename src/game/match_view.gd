@@ -10,6 +10,15 @@ extends Node3D
 ## no s'interpolen.
 const SNAP_PLAYER := 2.0
 const SNAP_BALL := 3.0
+## Distàncies a la pilota (metres) on un jugador sense pilota comença a ajupir-se i on ja
+## ho està del tot: un rival que va a robar-la (les entrades es fan a menys d'1,5 m), qui
+## n'espera la passada i qui va a buscar una pilota lliure.
+const TACKLE_NEAR := 3.0
+const TACKLE_FAR := 5.0
+const RECEIVE_NEAR := 5.0
+const RECEIVE_FAR := 9.0
+const LOOSE_NEAR := 2.5
+const LOOSE_FAR := 4.5
 
 var runner: MatchRunner
 
@@ -118,8 +127,30 @@ func _apply(f: float, delta: float = 0.0) -> void:
 			# Velocitat vista entre els dos últims passos (també a la repetició).
 			var speed := 0.0 if jump else a.distance_to(b) / Constants.STEP
 			var p := s.players[i]
-			v.animate(p, speed, delta, _ball.position if p == owner else Vector3.INF)
+			var at := _ball.position if p == owner else Vector3.INF
+			v.animate(p, speed, delta, at, engagement(s, p))
 	_update_ring()
+
+
+## Si el jugador `p` és a la jugada (1: ajupit i amb el pal a terra) o no (0: més dret i
+## amb el pal aixecat). Ho és el porter, sempre; qui porta la pilota; un rival que s'acosta
+## a qui la porta per robar-la; i qui va a buscar una pilota lliure o n'espera la passada.
+## Els companys de qui porta la pilota no.
+static func engagement(s: MatchState, p: Player) -> float:
+	if p.is_gk:
+		return 1.0
+	var ball := s.ball
+	var own := ball.owner
+	if own == p:
+		return 1.0
+	var d := Vector2(ball.x - p.x, ball.y - p.y).length()
+	if own:
+		if own.team == p.team:
+			return 0.0
+		return 1.0 - smoothstep(TACKLE_NEAR, TACKLE_FAR, d)
+	if ball.pass_target == p:
+		return 1.0 - smoothstep(RECEIVE_NEAR, RECEIVE_FAR, d)
+	return 1.0 - smoothstep(LOOSE_NEAR, LOOSE_FAR, d)
 
 
 ## Posició de la pilota que es veu ara (interpolada), en coordenades de la simulació.
