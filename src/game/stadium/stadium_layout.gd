@@ -65,12 +65,14 @@ const TV_CAM_X := HL - 11.0
 const POLE_H := 18.0
 
 ## Banquetes al passeig, a banda i banda de la línia del mig (Iluro a l'esquerra): centre
-## x, amplada, davant (cap al camp) i darrere.
+## x, amplada, davant (cap al camp), darrere i alçada fins al sostre. Al mig, la cabina de
+## la taula, de BOOTH_W m. Les construeix Dugout.
 const BENCH_X: Array[float] = [-5.6, 5.6]
 const BENCH_W := 6.0
 const BENCH_Y0 := -HW - 5.0
 const BENCH_Y1 := -HW - 6.8
 const BENCH_H := 2.3
+const BOOTH_W := 2.4
 
 ## Casetes del club al nord: [Rect2(x0, y0, mida x, mida y), alçada, paret, teulada].
 ## La paret "club" fa servir la façana amb el rètol ILURO HC.

@@ -1,6 +1,9 @@
-## Malla feta amb codi (equip del porter, pal, sabatilles): una superfície amb vèrtexs,
-## normals, colors i triangles, que s'omple amb graelles i tubs. Els colors van als vèrtexs
-## (material()). Si es mou amb l'esquelet, porta també quatre ossos i pesos per vèrtex.
+## Malla feta amb codi en coordenades de Godot (equip del porter, pal, sabatilles,
+## banquetes, arbres): una superfície amb vèrtexs, normals, colors i triangles, que s'omple
+## amb graelles, tubs, quads i caixes. Els colors van als vèrtexs (material()). Si es mou
+## amb l'esquelet, porta també quatre ossos i pesos per vèrtex. Cada triangle s'orienta
+## segons la normal. (MeshBuilder, de l'estadi, treballa en coordenades de la simulació,
+## sense colors.)
 class_name MeshPart
 extends RefCounted
 

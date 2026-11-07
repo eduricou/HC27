@@ -126,7 +126,7 @@ func test_el_pal_toca_on_toca_la_simulacio() -> void:
 		var k := sin((swing / 0.25) * PI) if swing > 0.0 else 0.0
 		BallActions.stick_pt(s, p, 0.72 - k * 0.55, 0.3 + k * 0.35)
 		var want := Coords.to_view(s.st_x, s.st_y, k * 0.75 + r)
-		var got := v.rig.to_global(v.rig.blade)
+		var got := v.rig.to_global(v.rig.placer.blade)
 		(
 			assert_vector(got)
 			. override_failure_message("swing %s: %s vs %s" % [swing, got, want])
@@ -137,7 +137,7 @@ func test_el_pal_toca_on_toca_la_simulacio() -> void:
 	for i in 20:
 		v.animate(p, 0.0, 1.0 / 60.0, ball)
 		await get_tree().process_frame
-	var at := v.rig.to_global(v.rig.blade)
+	var at := v.rig.to_global(v.rig.placer.blade)
 	assert_vector(at).is_equal_approx(ball, Vector3.ONE * 0.015)
 
 
@@ -164,13 +164,15 @@ func test_mans_al_pal_i_peus_a_terra() -> void:
 	var grips: Array[Vector3] = []
 	for i in 2:
 		var hand: Transform3D = final[["hand_l", "hand_r"][i]]
-		var grip := rig.to_global(rig.grip_points[i])
+		var grip := rig.to_global(rig.placer.grip_points[i])
 		grips.append(grip)
 		# La canya passa pel puny...
 		var d := (hand * GripModifier3D.hole(i)).distance_to(grip)
 		assert_float(d).override_failure_message("puny %d a %.3f m del pal" % [i, d]).is_less(0.04)
 		# ... i els dits l'envolten (les puntes, a tocar de la superfície).
-		var axis := rig.to_global(rig.grip_points[0]) - rig.to_global(rig.grip_points[1])
+		var axis := (
+			rig.to_global(rig.placer.grip_points[0]) - rig.to_global(rig.placer.grip_points[1])
+		)
 		axis = axis.normalized()
 		for t: String in tips:
 			var q: Vector3 = final[t + str(i)] - grip

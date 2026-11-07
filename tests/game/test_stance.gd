@@ -76,7 +76,7 @@ func test_dret_lluny_de_la_jugada() -> void:
 		await get_tree().process_frame
 	var r := v.rig
 	assert_float(r.low).is_less(0.01)
-	assert_float(r.blade.y).is_greater(0.25)
+	assert_float(r.placer.blade.y).is_greater(0.25)
 	var up_drop := r.posture.drop
 	var up_hip := r.posture.hip
 	v.animate(p, 0.0, 1.0 / 60.0, Vector3.INF, 1.0)
@@ -86,7 +86,7 @@ func test_dret_lluny_de_la_jugada() -> void:
 		v.animate(p, 0.0, 1.0 / 60.0, Vector3.INF, 1.0)
 		await get_tree().process_frame
 	assert_float(r.low).is_greater(0.99)
-	assert_float(r.blade.y).is_less(BallView.RADIUS + 0.01)
+	assert_float(r.placer.blade.y).is_less(BallView.RADIUS + 0.01)
 	assert_float(r.posture.drop).is_greater(up_drop + 0.1)
 	assert_float(r.posture.hip).is_greater(up_hip + 0.3)
 
@@ -101,9 +101,9 @@ func test_mans_al_pal_corrent_amb_la_pilota() -> void:
 		var worst := [0.0, 0.0]
 		var grab := func() -> void:
 			for i in 2:
-				var hand := rig._bone_local(sk.find_bone(["hand_l", "hand_r"][i]))
+				var hand := rig.placer.bone_local(sk.find_bone(["hand_l", "hand_r"][i]))
 				var d := (hand * (GripModifier3D.hole(i) * rig.height)).distance_to(
-					rig.grip_points[i]
+					rig.placer.grip_points[i]
 				)
 				worst[i] = maxf(worst[i], d)
 		for f in 70:

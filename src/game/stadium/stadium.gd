@@ -591,7 +591,8 @@ func _spectators() -> MultiMeshInstance3D:
 	mm.use_custom_data = true
 	mm.mesh = quad
 	mm.instance_count = L.SPECTATORS
-	var bench_x := L.BENCH_W + absf(L.BENCH_X[1])
+	# Fins a mig metre més enllà de les banquetes.
+	var bench_x := absf(L.BENCH_X[1]) + L.BENCH_W * 0.5 + 0.5
 	for i in L.SPECTATORS:
 		var x := rng.randf_range(-HL, HL)
 		var y := rng.randf_range(L.WALK_Y + 0.4, L.WALK_Y + 1.8)

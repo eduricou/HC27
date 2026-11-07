@@ -7,11 +7,9 @@
 class_name Dugout
 extends RefCounted
 
-## Alçada fins al sostre i fondària.
-const H := 2.3
-const D := 1.8
-## Trams: [x0, x1, nombre de trams, té cadires].
-const UNITS := [[-8.6, -2.6, 3, true], [-1.2, 1.2, 1, false], [2.6, 8.6, 3, true]]
+## Alçada fins al sostre i fondària (StadiumLayout).
+const H := StadiumLayout.BENCH_H
+const D := StadiumLayout.BENCH_Y0 - StadiumLayout.BENCH_Y1
 const SEATS := 8
 const ORANGE := Color("e5671b")
 const PANEL := Color("16181b")
@@ -30,8 +28,9 @@ static func build() -> Node3D:
 	var white := MeshPart.new()
 	var seats := MeshPart.new()
 	var legs := MeshPart.new()
-	var x_min: float = UNITS[0][0]
-	var x_max: float = UNITS[-1][1]
+	var all := units()
+	var x_min: float = all[0][0]
+	var x_max: float = all[-1][1]
 	# Sostre pla, una mica més gran que les banquetes, amb el cantell de davant.
 	white.box(
 		Vector3(x_min - 0.15, H, -0.08), Vector3(x_max + 0.15, H + 0.1, D + 0.22), WHITE, true
@@ -39,7 +38,7 @@ static func build() -> Node3D:
 	white.box(
 		Vector3(x_min - 0.15, H - 0.06, D + 0.18), Vector3(x_max + 0.15, H + 0.14, D + 0.25), WHITE
 	)
-	for u: Array in UNITS:
+	for u: Array in all:
 		var x0: float = u[0]
 		var x1: float = u[1]
 		var bays: int = u[2]
@@ -70,6 +69,19 @@ static func build() -> Node3D:
 	var fascia := _text("ILURO Hockey Club", &"ui", 36, Vector3(-6.4, H + 0.04, D + 0.255), PANEL)
 	root.add_child(fascia)
 	return root
+
+
+## Trams, d'esquerra a dreta: [x0, x1, nombre de trams, té cadires]. Les banquetes,
+## de StadiumLayout.BENCH_X i BENCH_W; la cabina, de BOOTH_W.
+static func units() -> Array:
+	var out := []
+	var half := StadiumLayout.BENCH_W * 0.5
+	for i in StadiumLayout.BENCH_X.size():
+		var cx: float = StadiumLayout.BENCH_X[i]
+		out.append([cx - half, cx + half, 3, true])
+	var b := StadiumLayout.BOOTH_W * 0.5
+	out.insert(1, [-b, b, 1, false])
+	return out
 
 
 ## Un tram: pals, barres i plafons negres al darrere i als costats.
