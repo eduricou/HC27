@@ -23,7 +23,6 @@ const HAIR_SCENES: Array[String] = [
 const BEARD_SCENE := "res://assets/models/players/hair/Hair_Beard.gltf"
 ## Pentinat per a cada valor de p.hs (0–4): índex de HAIR_SCENES, o −1 si és calb.
 const HAIRSTYLE: Array[int] = [0, 1, 2, -1, 0]
-const SHOES := Color("17191c")
 
 ## Punt de control del pal en repòs (on va la pilota quan es porta). ref: stickPt()
 const STICK_F := 0.72
@@ -95,6 +94,7 @@ func setup(p: Player, def: TeamData) -> void:
 	if is_gk:
 		_gk_gear(def)
 	else:
+		_attach_shoes(p)
 		var style := HAIRSTYLE[p.hs % HAIRSTYLE.size()]
 		if style >= 0:
 			_attach_hair(HAIR_SCENES[style], hair)
@@ -397,7 +397,9 @@ func _kit_material(def: TeamData, gk: bool) -> ShaderMaterial:
 	m.set_shader_parameter("collar", Color(kit.get("collar", kit["shirt2"])))
 	m.set_shader_parameter("shorts", Color(kit["shorts"]))
 	m.set_shader_parameter("socks", Color(kit["socks"]))
-	m.set_shader_parameter("shoes", SHOES)
+	# El peu de sota les sabatilles (o les xuteres) va del color del mitjó: si en surt
+	# un tros pel coll de la sabatilla, no es nota.
+	m.set_shader_parameter("shoes", Color(kit["socks"]))
 	m.set_shader_parameter("gloves", Color(kit.get("pads", "#f2f2ef")))
 	m.set_shader_parameter("num_color", Color(kit["num"]))
 	_cache[key] = m
@@ -438,6 +440,22 @@ func _attach_hair(path: String, color: Color) -> void:
 	mi.skeleton = NodePath("..")
 	mi.material_override = _hair_material(parts[2])
 	mi.set_instance_shader_parameter("hair_color", color)
+
+
+## Sabatilles (ShoeMesh): es mouen amb els ossos del peu, com el cos, i cada jugador les
+## porta d'uns colors. No fan ombra (ja la fa el peu de sota).
+func _attach_shoes(p: Player) -> void:
+	var mi := MeshInstance3D.new()
+	mi.name = "Sabatilles"
+	mi.mesh = ShoeMesh.build(body_mesh.skin, skeleton)
+	mi.skin = body_mesh.skin
+	mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	skeleton.add_child(mi)
+	mi.skeleton = NodePath("..")
+	var c := ShoeMesh.colors_for(p)
+	mi.set_instance_shader_parameter("upper", c[0])
+	mi.set_instance_shader_parameter("accent", c[1])
+	mi.set_instance_shader_parameter("sole", c[2])
 
 
 ## Casc amb reixa, guardes, xuteres i guants del porter (GkGear), enganxats als ossos.

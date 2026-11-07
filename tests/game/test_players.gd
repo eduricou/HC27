@@ -338,3 +338,56 @@ func test_equip_del_porter_es_reaprofita() -> void:
 	var navy := Color("14234b")
 	var kit: Array[Color] = [Color("f2c500"), navy]
 	assert_object(GkGear.contrast(Color("f4f4f2"), kit)).is_equal(navy)
+
+
+# --- Sabatilles -----------------------------------------------------------------------
+
+
+## Els jugadors de camp porten sabatilles que es mouen amb el peu, de colors diferents
+## entre companys; el porter no (porta xuteres).
+func test_sabatilles_de_colors_diferents() -> void:
+	var uppers := {}
+	for p in _sim.s.teams[0].players:
+		var v := _rig_for(p)
+		var shoes := v.rig.skeleton.get_node_or_null("Sabatilles") as MeshInstance3D
+		if p.is_gk:
+			assert_object(shoes).is_null()
+			continue
+		assert_object(shoes).is_not_null()
+		assert_object(shoes.skin).is_same(v.rig.body_mesh.skin)
+		uppers[ShoeMesh.colors_for(p)[0]] = true
+	assert_int(uppers.size()).is_equal(10)
+
+
+## Les sabatilles tapen el peu del model: gairebé tots els vèrtexs del peu (del turmell
+## avall) queden dins del perfil. Els pesos sumen 1 i van als ossos del peu i de la cama.
+func test_les_sabatilles_tapen_el_peu() -> void:
+	var body: Node = auto_free(PlayerRig.BODY_SCENE.instantiate())
+	var sk := body.get_node("Armature/Skeleton3D") as Skeleton3D
+	var mi := sk.get_node("SuperHero_Male") as MeshInstance3D
+	var verts: PackedVector3Array = mi.mesh.surface_get_arrays(0)[Mesh.ARRAY_VERTEX]
+	var inside := 0
+	var total := 0
+	for p in verts:
+		if p.y > 0.1 or absf(p.x) < 0.05 or p.z < -0.2 or p.z > 0.2:
+			continue
+		total += 1
+		var pr := ShoeMesh.profile_at(p.z)
+		var ok := p.z >= ShoeMesh.PROFILE[0].x and p.z <= ShoeMesh.PROFILE[-1].x
+		ok = ok and absf(absf(p.x) - pr.x) <= pr.y + 0.005 and p.y <= pr.z + 0.002
+		if ok:
+			inside += 1
+	assert_int(total).is_greater(100)
+	assert_float(float(inside) / total).is_greater(0.97)
+	var mesh := ShoeMesh.build(mi.skin, sk)
+	var arr := mesh.surface_get_arrays(0)
+	var w: PackedFloat32Array = arr[Mesh.ARRAY_WEIGHTS]
+	var b: PackedInt32Array = arr[Mesh.ARRAY_BONES]
+	var names := {}
+	for k in range(0, w.size(), 4):
+		assert_float(w[k] + w[k + 1] + w[k + 2] + w[k + 3]).is_equal_approx(1.0, 1e-4)
+		for j in 3:
+			names[mi.skin.get_bind_name(b[k + j])] = true
+	assert_array(names.keys()).contains_exactly_in_any_order(
+		["foot_l", "ball_l", "calf_l", "foot_r", "ball_r", "calf_r"]
+	)

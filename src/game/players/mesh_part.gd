@@ -1,5 +1,6 @@
-## Malla feta amb codi (equip del porter, pal): una superfície amb vèrtexs, normals, colors
-## i triangles, que s'omple amb graelles i tubs. Els colors van als vèrtexs (material()).
+## Malla feta amb codi (equip del porter, pal, sabatilles): una superfície amb vèrtexs,
+## normals, colors i triangles, que s'omple amb graelles i tubs. Els colors van als vèrtexs
+## (material()). Si es mou amb l'esquelet, porta també quatre ossos i pesos per vèrtex.
 class_name MeshPart
 extends RefCounted
 
@@ -7,6 +8,8 @@ var verts := PackedVector3Array()
 var normals := PackedVector3Array()
 var colors := PackedColorArray()
 var idx := PackedInt32Array()
+var bones := PackedInt32Array()
+var weights := PackedFloat32Array()
 
 
 ## Graella pts[i][j]: i al llarg, j al voltant (si `closed`, la volta es tanca). Les
@@ -87,6 +90,9 @@ func add_to(mesh: ArrayMesh, mat: Material) -> void:
 	arr[Mesh.ARRAY_NORMAL] = normals
 	arr[Mesh.ARRAY_COLOR] = colors
 	arr[Mesh.ARRAY_INDEX] = idx
+	if not bones.is_empty():
+		arr[Mesh.ARRAY_BONES] = bones
+		arr[Mesh.ARRAY_WEIGHTS] = weights
 	mesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arr)
 	mesh.surface_set_material(mesh.get_surface_count() - 1, mat)
 

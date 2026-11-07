@@ -106,6 +106,18 @@ Ho comprova `test_els_peus_no_rellisquen`, que hi posa un límit del 15 %.
     - els dits es tanquen al voltant del puny: el punt on passa la canya i la flexió de cada falange s'han ajustat amb una cerca sobre l'esquelet, de manera que les articulacions queden a uns 2,5 cm de l'eix.
   - **Postura:** quiets o a poc a poc, els jugadors s'ajupen una mica més (malucs 0,6 rad i pelvis 24 cm avall) perquè la mà dreta pugui baixar per la canya.
   - **Física de la simulació:** no ha canviat. El fregament, el bot i la velocitat de la pilota són els de la web, que comprova l'oracle (decisió 0002).
+- **Revisió (7/11/2026, sabatilles):** l'usuari va demanar millorar les sabatilles, que no fossin totes iguals. Abans, el peu del model era nu, amb els dits marcats, i estava pintat de negre. Ara:
+  - **Malla** (`ShoeMesh`, feta amb codi):
+    - sola gruixuda, amb el taló més alt i la punta una mica aixecada;
+    - empenya que tapa el peu fins al turmell;
+    - es mou amb els ossos com el peu del model: la punta, amb l'os dels dits, i el coll del darrere, una mica amb la cama.
+  - **Dibuixos:** les tres ratlles, els cordons, el taló reforçat, la pestanya i la marca els fa el shader (`shoe.gdshader`) a partir de la posició dins la sabatilla, que va al color del vèrtex. Així una sola malla serveix per a tothom.
+  - **Colors:**
+    - cada jugador porta una de les 12 combinacions de la paleta (empenya, ratlles i sola);
+    - es tria pel dorsal i l'equip, de manera que és sempre la mateixa i els companys no la repeteixen.
+  - **Porters:** no en porten, perquè ja els tapen les xuteres.
+  - **Peu de sota:** es pinta del color del mitjó, i si en surt un tros pel coll de la sabatilla, no es nota.
+  - **Cost:** cap ombra pròpia (ja la fa el peu). La mesura del partit sencer (Alta, de nit) dona 139 fps, i cap fotograma passa de 16,4 ms.
 
 ### 6. Accions
 
