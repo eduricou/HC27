@@ -200,8 +200,13 @@ func test_el_camp_es_construeix_sencer() -> void:
 	for sp: SpotLight3D in spots:
 		# El camp fix no fa ombra amb els focus.
 		assert_int(sp.shadow_caster_mask & Stadium.STATIC_LAYER).is_equal(0)
-	var people: MultiMeshInstance3D = st.get_node("Public")
-	assert_int(people.multimesh.instance_count).is_equal(StadiumLayout.SPECTATORS)
+	# Públic en 3D: totes les persones, repartides en unes quantes siluetes.
+	var people := 0
+	for mmi: MultiMeshInstance3D in st.get_node("Public").get_children():
+		people += mmi.multimesh.instance_count
+		assert_object(mmi.multimesh.mesh).is_not_null()
+	assert_int(people).is_equal(StadiumLayout.SPECTATORS)
+	assert_int(st.get_node("Public").get_child_count()).is_greater(3)
 	st.set_night(false)
 	assert_bool((st.get_node("Sol") as Light3D).visible).is_true()
 	assert_bool((spots[0] as Light3D).visible).is_false()
@@ -284,3 +289,35 @@ func test_l_horitzo_no_es_talla() -> void:
 		var d := Vector2(t.x, t.y + 20.0).length()
 		assert_float(d).is_greater(150.0)
 		assert_bool(absf(t.x) < 200.0 and t.y > 0.0 and t.y < 230.0).is_false()
+
+
+## Les persones del públic fan l'alçada que toca i tenen totes les peces (pell, cabell,
+## roba i sabates) marcades per al shader.
+func test_public_en_3d() -> void:
+	var mesh := SpectatorMesh.build(1.75, 0.5, SpectatorMesh.Pose.CROSSED, true)
+	var aabb := mesh.get_aabb()
+	assert_float(aabb.end.y).is_between(1.7, 1.8)
+	assert_float(aabb.position.y).is_greater(-0.01)
+	assert_float(aabb.size.x).is_between(0.4, 0.75)
+	var kinds := {}
+	for c: Color in mesh.surface_get_arrays(0)[Mesh.ARRAY_COLOR]:
+		kinds[int(c.r * 8.0)] = true
+	for k in SpectatorMesh.Part.values():
+		if k != SpectatorMesh.Part.SHIRT:
+			assert_bool(kinds.has(k)).override_failure_message(str(k)).is_true()
+	assert_object(SpectatorMesh.build(1.75, 0.5, SpectatorMesh.Pose.CROSSED, true)).is_same(mesh)
+
+
+## Els cotxes fan la mida d'un turisme i n'hi ha una filera aparcada. (El color de cada un
+## va a les dades de la instància, que sense pantalla no es guarden: es veu a les captures.)
+func test_cotxes() -> void:
+	var aabb := CarMesh.build().get_aabb()
+	assert_float(aabb.size.x).is_between(4.0, 4.6)
+	assert_float(aabb.size.z).is_between(1.6, 2.0)
+	assert_float(aabb.end.y).is_between(1.3, 1.6)
+	assert_float(aabb.position.y).is_greater(-0.01)
+	var st: Stadium = auto_free(STADIUM.instantiate())
+	add_child(st)
+	var mmi := st.get_node("Carrer/Cotxes/Cotxes") as MultiMeshInstance3D
+	assert_int(mmi.multimesh.instance_count).is_greater(10)
+	assert_bool(mmi.multimesh.use_custom_data).is_true()

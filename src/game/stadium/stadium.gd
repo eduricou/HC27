@@ -16,7 +16,6 @@ const TEX := "res://assets/textures/stadium/%s.png"
 const TURF_SHADER := preload("res://shaders/turf.gdshader")
 const SKY_SHADER := preload("res://shaders/sky.gdshader")
 const NET_SHADER := preload("res://shaders/net.gdshader")
-const CROWD_SHADER := preload("res://shaders/crowd.gdshader")
 const FACADE_SHADER := preload("res://shaders/facade.gdshader")
 
 const STEEL := Color("5d636a")
@@ -582,19 +581,27 @@ func _benches() -> Node3D:
 	return root
 
 
-## Públic dret al passeig: un quad per persona (MultiMesh) amb l'atles people.png. Els del
-## Polo, al sector del nord. ref: makeCrowd()
-func _spectators() -> MultiMeshInstance3D:
+## Públic dret al passeig, en 3D (SpectatorMesh): unes quantes siluetes de mides i
+## postures diferents, repetides amb MultiMesh, i els colors de cada persona (samarreta o
+## jaqueta, pantalons, pell i cabell). Els del Polo, al sector del nord. Miren cap al camp.
+## ref: makeCrowd()
+func _spectators() -> Node3D:
+	var root := Node3D.new()
+	root.name = "Public"
 	var rng := RandomNumberGenerator.new()
 	rng.seed = 35
-	var quad := QuadMesh.new()
-	quad.size = Vector2(0.6, 1.8)
-	quad.center_offset = Vector3(0.0, 0.9, 0.0)
-	var mm := MultiMesh.new()
-	mm.transform_format = MultiMesh.TRANSFORM_3D
-	mm.use_custom_data = true
-	mm.mesh = quad
-	mm.instance_count = L.SPECTATORS
+	# Siluetes: [alçada, corpulència, postura, bufanda].
+	var shapes := [
+		[1.68, 0.2, SpectatorMesh.Pose.POCKETS, false],
+		[1.78, 0.5, SpectatorMesh.Pose.ARMS_DOWN, false],
+		[1.74, 0.9, SpectatorMesh.Pose.CROSSED, false],
+		[1.62, 0.4, SpectatorMesh.Pose.ARMS_DOWN, true],
+		[1.85, 0.3, SpectatorMesh.Pose.CROSSED, false],
+		[1.72, 0.7, SpectatorMesh.Pose.POCKETS, true],
+	]
+	var groups: Array[Array] = []
+	for sh in shapes:
+		groups.append([])
 	# Fins a mig metre més enllà de les banquetes.
 	var bench_x := absf(L.BENCH_X[1]) + L.BENCH_W * 0.5 + 0.5
 	for i in L.SPECTATORS:
@@ -604,17 +611,35 @@ func _spectators() -> MultiMeshInstance3D:
 			# Darrere les banquetes hi ha poc lloc.
 			y = rng.randf_range(L.WALK_Y + 0.4, L.BENCH_Y1 - 0.4)
 		var away := x > 18.0 and rng.randf() < 0.8
-		var cell := 11 + rng.randi() % 5 if away else rng.randi() % 11
-		mm.set_instance_transform(i, Transform3D(Basis(), Coords.to_view(x, y, 0.0)))
-		mm.set_instance_custom_data(i, Color(cell, rng.randf(), 0.0, 0.0))
-	var mmi := MultiMeshInstance3D.new()
-	mmi.name = "Public"
-	mmi.multimesh = mm
-	mmi.material_override = _shader_mat(
-		CROWD_SHADER, {"atlas": _tex("people"), "grid": Vector2(8, 2)}
-	)
-	mmi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-	return mmi
+		# Samarreta: 0–3 de l'Iluro, 12–15 del Polo, la resta neutres; amb jaqueta (bit 4)
+		# una de cada tres persones, del color jacket (bits 5–7).
+		var top := 12 + rng.randi() % 4 if away else rng.randi() % 12
+		if rng.randf() < 0.35:
+			top += 16 + 32 * (rng.randi() % 5)
+		var look := rng.randi() % 5 + 5 * (rng.randi() % 6)
+		var shape := rng.randi() % shapes.size()
+		if away and shapes[shape][3]:
+			shape = (shape + 1) % shapes.size()
+		# Mirant cap al camp (+y de la simulació), una mica girats a l'atzar.
+		var yaw := Coords.face_to_yaw(PI * 0.5) + PI + rng.randf_range(-0.5, 0.5)
+		var xf := Transform3D(Basis(Vector3.UP, yaw), Coords.to_view(x, y, 0.0))
+		var custom := Color(top / 255.0, (rng.randi() % 5) / 255.0, look / 255.0, rng.randf())
+		groups[shape].append([xf, custom])
+	for v in shapes.size():
+		var sh: Array = shapes[v]
+		var mm := MultiMesh.new()
+		mm.transform_format = MultiMesh.TRANSFORM_3D
+		mm.use_custom_data = true
+		mm.mesh = SpectatorMesh.build(sh[0], sh[1], sh[2], sh[3])
+		mm.instance_count = groups[v].size()
+		for k in groups[v].size():
+			mm.set_instance_transform(k, groups[v][k][0])
+			mm.set_instance_custom_data(k, groups[v][k][1])
+		var mmi := MultiMeshInstance3D.new()
+		mmi.name = "Public%d" % v
+		mmi.multimesh = mm
+		root.add_child(mmi)
+	return root
 
 
 # --- Casetes del club i carrer ------------------------------------------------------
@@ -677,47 +702,30 @@ func _street() -> Node3D:
 	return root
 
 
-## Cotxes aparcats al costat del camp: carrosseria (amb color) i vidres.
+## Cotxes aparcats al costat del camp (CarMesh), cada un d'un color i una mica girat.
 func _cars(rng: RandomNumberGenerator) -> Node3D:
 	var root := Node3D.new()
 	root.name = "Cotxes"
-	var body := MeshBuilder.new()
-	body.box(-2.1, 2.1, -0.87, 0.87, 0.28, 1.0)
-	var cabin := MeshBuilder.new()
-	cabin.box(-1.2, 1.0, -0.78, 0.78, 1.0, 1.48)
 	var spots: Array[Vector2] = []
 	var cx := -80.0
 	while cx < 40.0:
 		if rng.randf() < 0.75:
 			spots.append(Vector2(cx, L.STREET_Y0 - 1.2))
 		cx += rng.randf_range(4.8, 6.5)
-	var bodies := MultiMesh.new()
-	bodies.transform_format = MultiMesh.TRANSFORM_3D
-	bodies.use_colors = true
-	bodies.mesh = body.to_mesh()
-	bodies.instance_count = spots.size()
-	var cabins := MultiMesh.new()
-	cabins.transform_format = MultiMesh.TRANSFORM_3D
-	cabins.mesh = cabin.to_mesh()
-	cabins.instance_count = spots.size()
+	var mm := MultiMesh.new()
+	mm.transform_format = MultiMesh.TRANSFORM_3D
+	mm.use_custom_data = true
+	mm.mesh = CarMesh.build()
+	mm.instance_count = spots.size()
 	for i in spots.size():
-		var t := Transform3D(Basis(), Coords.to_view(spots[i].x, spots[i].y, 0.0))
-		bodies.set_instance_transform(i, t)
-		bodies.set_instance_color(i, CAR_COLORS[rng.randi() % CAR_COLORS.size()])
-		cabins.set_instance_transform(i, t)
-	var car_mat := _mat(Color.WHITE, 0.3)
-	car_mat.vertex_color_use_as_albedo = true
-	car_mat.metallic = 0.4
-	var bmi := MultiMeshInstance3D.new()
-	bmi.name = "Carrosseries"
-	bmi.multimesh = bodies
-	bmi.material_override = car_mat
-	root.add_child(bmi)
-	var cmi := MultiMeshInstance3D.new()
-	cmi.name = "Vidres"
-	cmi.multimesh = cabins
-	cmi.material_override = _mat(Color("1a2028"), 0.15)
-	root.add_child(cmi)
+		var yaw := rng.randf_range(-0.04, 0.04) + (PI if rng.randf() < 0.5 else 0.0)
+		var t := Transform3D(Basis(Vector3.UP, yaw), Coords.to_view(spots[i].x, spots[i].y, 0.0))
+		mm.set_instance_transform(i, t)
+		mm.set_instance_custom_data(i, CAR_COLORS[rng.randi() % CAR_COLORS.size()])
+	var mmi := MultiMeshInstance3D.new()
+	mmi.name = "Cotxes"
+	mmi.multimesh = mm
+	root.add_child(mmi)
 	return root
 
 
