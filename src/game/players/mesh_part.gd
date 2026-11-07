@@ -53,6 +53,78 @@ func grid(
 			_tri(a, c, d)
 
 
+## Quadrilàter a, b, c, d (en ordre al voltant) amb la cara cap a `facing`.
+func quad(a: Vector3, b: Vector3, c: Vector3, d: Vector3, color: Color, facing: Vector3) -> void:
+	var start := verts.size()
+	var n := facing.normalized()
+	for v in [a, b, c, d]:
+		verts.append(v)
+		normals.append(n)
+		colors.append(color)
+	_tri(start, start + 1, start + 2)
+	_tri(start, start + 2, start + 3)
+
+
+## Caixa alineada amb els eixos, de `lo` a `hi`. Sense la cara de sota si `bottom` és fals.
+func box(lo: Vector3, hi: Vector3, color: Color, bottom := false) -> void:
+	var x0 := lo.x
+	var x1 := hi.x
+	var y0 := lo.y
+	var y1 := hi.y
+	var z0 := lo.z
+	var z1 := hi.z
+	var c := color
+	quad(
+		Vector3(x0, y1, z0),
+		Vector3(x1, y1, z0),
+		Vector3(x1, y1, z1),
+		Vector3(x0, y1, z1),
+		c,
+		Vector3.UP
+	)
+	quad(
+		Vector3(x0, y0, z1),
+		Vector3(x1, y0, z1),
+		Vector3(x1, y1, z1),
+		Vector3(x0, y1, z1),
+		c,
+		Vector3.BACK
+	)
+	quad(
+		Vector3(x0, y0, z0),
+		Vector3(x1, y0, z0),
+		Vector3(x1, y1, z0),
+		Vector3(x0, y1, z0),
+		c,
+		Vector3.FORWARD
+	)
+	quad(
+		Vector3(x1, y0, z0),
+		Vector3(x1, y0, z1),
+		Vector3(x1, y1, z1),
+		Vector3(x1, y1, z0),
+		c,
+		Vector3.RIGHT
+	)
+	quad(
+		Vector3(x0, y0, z0),
+		Vector3(x0, y0, z1),
+		Vector3(x0, y1, z1),
+		Vector3(x0, y1, z0),
+		c,
+		Vector3.LEFT
+	)
+	if bottom:
+		quad(
+			Vector3(x0, y0, z0),
+			Vector3(x1, y0, z0),
+			Vector3(x1, y0, z1),
+			Vector3(x0, y0, z1),
+			c,
+			Vector3.DOWN
+		)
+
+
 ## Tub de radi `r` al llarg de `path` (les barres de la reixa).
 func tube(path: PackedVector3Array, r: float, color: Color, sides := 6) -> void:
 	var along := (path[path.size() - 1] - path[0]).normalized()

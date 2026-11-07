@@ -93,8 +93,9 @@ Regles, constants i toleràncies: docs/regles.md. Decisions: docs/decisions/.
 - El camp (scenes/stadium.tscn, src/game/stadium/) és el real de l'Iluro al carrer Galícia
   (foto aèria; docs/decisions/0006), no l'estadi de la web: sense grada, passeig amb
   banquetes i públic dret a −y, bardissa i talús a +y (on és la càmera TV), casetes del club
-  a +x. Tota la disposició és a StadiumLayout. Res de l'est no pot tapar la vista TV (hi ha
-  una prova). Porta també la llum (tarda: sol; nit: 6 focus), el cel i l'entorn. Shader
+  a +x. Banquetes com les reals (Dugout, foto de l'usuari) i arbres en 3D fets amb codi
+  (TreeMesh, repetits amb MultiMesh). Tota la disposició és a StadiumLayout. Res de l'est
+  no pot tapar la vista TV (hi ha una prova). Porta també la llum (tarda: sol; nit: 6 focus), el cel i l'entorn. Shader
   globals a project.godot: night, crowd_jump. El camp fix va a la capa 2 i els focus de nit
   no en fan ombra (shadow_caster_mask). Efectes del partit (xarxa, públic): StadiumFx.
 - Jugadors (fase 4, docs/decisions/0007): PlayerView (posició i orientació, de MatchView)

@@ -18,12 +18,9 @@ const SKY_SHADER := preload("res://shaders/sky.gdshader")
 const NET_SHADER := preload("res://shaders/net.gdshader")
 const CROWD_SHADER := preload("res://shaders/crowd.gdshader")
 const FACADE_SHADER := preload("res://shaders/facade.gdshader")
-const FOLIAGE_SHADER := preload("res://shaders/foliage.gdshader")
-const HEDGE_SHADER := preload("res://shaders/hedge.gdshader")
 
 const STEEL := Color("5d636a")
 const CONCRETE := Color("a3a29b")
-const BENCH_ROOF := Color("8e2a22")
 const FENCE_GREEN := Color(0.2, 0.3, 0.24, 1.0)
 const CAR_COLORS: Array[Color] = [
 	Color("e9e9e6"),
@@ -479,18 +476,14 @@ func _banners() -> Node3D:
 	return root
 
 
-## Bardissa de l'est, de 3 m, per trams d'alçada una mica diferent.
+## Bardissa de l'est, de 3 m: un massís de fulles (com els arbres) amb el perfil arrodonit
+## i irregular, una mica més alt o més baix per trams.
 func _hedge() -> MeshInstance3D:
-	var rng := RandomNumberGenerator.new()
-	rng.seed = 9
-	var mb := MeshBuilder.new()
-	var x := -L.APRON_X - 8.0
-	while x < L.APRON_X + 8.0:
-		var h := L.HEDGE_H + rng.randf_range(-0.35, 0.3)
-		var d := rng.randf_range(-0.15, 0.15)
-		mb.box(x, x + 3.05, L.HEDGE_Y + d, L.HEDGE_Y + L.HEDGE_D, 0.0, h)
-		x += 3.0
-	return mb.to_instance("Bardissa", _shader_mat(HEDGE_SHADER, {"noise_tex": _tex("noise")}))
+	var mi := MeshInstance3D.new()
+	mi.name = "Bardissa"
+	mi.mesh = TreeMesh.hedge(-L.APRON_X - 8.0, L.APRON_X + 8.0, L.HEDGE_D, L.HEDGE_H, _foliage())
+	mi.position = Coords.to_view(0.0, L.HEDGE_Y, 0.0)
+	return mi
 
 
 # --- Torres de llum ---------------------------------------------------------------------
@@ -577,46 +570,12 @@ static func _flare_material() -> StandardMaterial3D:
 # --- Banquetes i públic -------------------------------------------------------------------
 
 
-## Banquetes dels dos equips al passeig, a la línia del mig, amb el sostre vermell (com a la
-## foto aèria), i la taula de l'àrbitre auxiliar al mig.
+## Banquetes dels dos equips al passeig, a la línia del mig, amb la cabina de la taula al
+## mig, com les reals (Dugout). Miren cap al camp.
 func _benches() -> Node3D:
-	var root := Node3D.new()
-	root.name = "Banquetes"
-	var shell := MeshBuilder.new()
-	var seat := MeshBuilder.new()
-	var roof := MeshBuilder.new()
-	var colors := [Color("f07c1a"), Color("14234b")]
-	var front := L.BENCH_Y0
-	var back := L.BENCH_Y1
-	# Sentit de darrere cap a davant (cap al camp).
-	var f := signf(front - back)
-	var h := L.BENCH_H
-	for i in L.BENCH_X.size():
-		var cx: float = L.BENCH_X[i]
-		var x0 := cx - L.BENCH_W * 0.5
-		var x1 := cx + L.BENCH_W * 0.5
-		_ybox(shell, x0, x1, back - f * 0.08, back, 0.0, h)
-		_ybox(shell, x0 - 0.08, x0, back, front, 0.0, h)
-		_ybox(shell, x1, x1 + 0.08, back, front, 0.0, h)
-		_ybox(roof, x0 - 0.1, x1 + 0.1, back - f * 0.1, front + f * 0.3, h, h + 0.08)
-		_ybox(seat, x0 + 0.2, x1 - 0.2, back + f * 0.05, back + f * 0.5, 0.42, 0.5)
-		_ybox(seat, x0 + 0.2, x1 - 0.2, back + f * 0.02, back + f * 0.1, 0.5, 0.95)
-		var band := MeshBuilder.new()
-		_ybox(band, x0 - 0.1, x1 + 0.1, front + f * 0.3, front + f * 0.36, h - 0.18, h + 0.08)
-		root.add_child(band.to_instance("Franja%d" % i, _mat(colors[i], 0.5)))
-	_ybox(seat, -0.8, 0.8, front, front - f * 0.7, 0.72, 0.78)
-	_ybox(seat, -0.7, 0.7, front - f * 0.1, front - f * 0.6, 0.0, 0.72)
-	root.add_child(shell.to_instance("Estructura", _mat(Color("dfe3e6"), 0.4)))
-	root.add_child(seat.to_instance("Bancs", _mat(Color("3a3f45"), 0.6)))
-	root.add_child(roof.to_instance("Sostre", _mat(BENCH_ROOF, 0.6)))
+	var root := Dugout.build()
+	root.position = Coords.to_view(0.0, L.BENCH_Y1, 0.0)
 	return root
-
-
-## Caixa amb els límits de y en qualsevol ordre.
-static func _ybox(
-	b: MeshBuilder, x0: float, x1: float, ya: float, yb: float, z0: float, z1: float
-) -> void:
-	b.box(x0, x1, minf(ya, yb), maxf(ya, yb), z0, z1)
 
 
 ## Públic dret al passeig: un quad per persona (MultiMesh) amb l'atles people.png. Els del
@@ -702,29 +661,14 @@ func _street() -> Node3D:
 		lx += 22.0
 	root.add_child(poles.to_instance("Fanals", _mat(STEEL, 0.5)))
 	root.add_child(heads.to_instance("Llums", _street_lamp_mat, false))
-	# Arbres de la franja de darrere la tanca.
-	var trees := MeshBuilder.new()
-	var tops := MeshBuilder.new()
+	# Arbres de fulla a la franja de darrere la tanca.
+	var spots: Array[Vector4] = []
 	for t in L.street_trees():
-		trees.cross_quad(t.x, t.y, 6.5, 0.0, 7.5, PI * 0.25)
-		var r := 2.4
-		tops.quad(
-			Vector3(t.x - r, t.y + r, 4.6),
-			Vector3(t.x + r, t.y + r, 4.6),
-			Vector3(t.x + r, t.y - r, 4.6),
-			Vector3(t.x - r, t.y - r, 4.6),
-			Vector3(0, 0, 1)
-		)
-	root.add_child(
-		trees.to_instance(
-			"Arbres", _shader_mat(FOLIAGE_SHADER, {"tex": _tex("tree"), "sway": 0.06})
-		)
-	)
-	root.add_child(
-		tops.to_instance(
-			"Copes", _shader_mat(FOLIAGE_SHADER, {"tex": _tex("pine_top"), "sway": 0.0})
-		)
-	)
+		spots.append(Vector4(t.x, t.y, 0.0, 1.0))
+	var kinds: Array[ArrayMesh] = []
+	for i in 3:
+		kinds.append(TreeMesh.broadleaf(51 + i, _foliage()))
+	root.add_child(_forest("Arbres", kinds, spots, true))
 	return root
 
 
@@ -772,35 +716,62 @@ func _cars(rng: RandomNumberGenerator) -> Node3D:
 	return root
 
 
-## Pins pinyers (quads creuats com a la web, amb la copa plana per veure'ls des de dalt) i
-## arbustos al talús, al camp del sud i darrere les casetes. ref: makePine()
+## Pins pinyers i arbustos al talús, al camp del sud i darrere les casetes (TreeMesh).
 func _vegetation() -> Node3D:
 	var root := Node3D.new()
 	root.name = "Vegetacio"
 	var veg := L.vegetation()
-	var side := MeshBuilder.new()
-	var top := MeshBuilder.new()
-	for t: Vector4 in veg["pines"]:
-		var w := 11.0 * t.w
-		var h := 12.0 * t.w
-		side.cross_quad(t.x, t.y, w, t.z, t.z + h, PI * 0.25)
-		var r := w * 0.36
-		var zc := t.z + h * 0.72
-		top.quad(
-			Vector3(t.x - r, t.y + r, zc),
-			Vector3(t.x + r, t.y + r, zc),
-			Vector3(t.x + r, t.y - r, zc),
-			Vector3(t.x - r, t.y - r, zc),
-			Vector3(0, 0, 1)
+	var pines: Array[ArrayMesh] = []
+	for i in 4:
+		pines.append(TreeMesh.pine(11 + i, _foliage()))
+	var bushes: Array[ArrayMesh] = []
+	for i in 3:
+		bushes.append(TreeMesh.bush(31 + i, _foliage()))
+	root.add_child(_forest("Pins", pines, veg["pines"], true))
+	root.add_child(_forest("Arbustos", bushes, veg["bushes"], false))
+	return root
+
+
+## Material del fullatge, compartit per tots els arbres.
+func _foliage() -> ShaderMaterial:
+	if not _textures.has("foliage"):
+		_textures["foliage"] = TreeMesh.foliage_material(_tex("noise"))
+	return _textures["foliage"]
+
+
+## Arbres repetits: per a cada lloc (x, y, z, escala, en coordenades de la simulació), una
+## de les variants `meshes`, girada a l'atzar (sempre igual). Un MultiMesh per variant.
+func _forest(
+	node_name: String, meshes: Array[ArrayMesh], spots: Array[Vector4], shadows: bool
+) -> Node3D:
+	var root := Node3D.new()
+	root.name = node_name
+	var groups: Array[Array] = []
+	for m in meshes:
+		groups.append([])
+	for i in spots.size():
+		var t := spots[i]
+		var yaw := fposmod(t.x * 12.9898 + t.y * 78.233, TAU)
+		var basis := Basis(Vector3.UP, yaw).scaled(Vector3.ONE * t.w)
+		groups[i % meshes.size()].append(Transform3D(basis, Coords.to_view(t.x, t.y, t.z)))
+	for v in meshes.size():
+		if groups[v].is_empty():
+			continue
+		var mm := MultiMesh.new()
+		mm.transform_format = MultiMesh.TRANSFORM_3D
+		mm.mesh = meshes[v]
+		mm.instance_count = groups[v].size()
+		for k in groups[v].size():
+			mm.set_instance_transform(k, groups[v][k])
+		var mmi := MultiMeshInstance3D.new()
+		mmi.name = "%s%d" % [node_name, v]
+		mmi.multimesh = mm
+		mmi.cast_shadow = (
+			GeometryInstance3D.SHADOW_CASTING_SETTING_ON
+			if shadows
+			else GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 		)
-	var bushes := MeshBuilder.new()
-	for b: Vector4 in veg["bushes"]:
-		bushes.cross_quad(b.x, b.y, 4.0 * b.w, b.z - 0.2, b.z + 2.8 * b.w, PI * 0.25)
-	var foliage := func(tex: String, sway: float) -> ShaderMaterial:
-		return _shader_mat(FOLIAGE_SHADER, {"tex": _tex(tex), "sway": sway})
-	root.add_child(side.to_instance("Pins", foliage.call("pine", 0.12)))
-	root.add_child(top.to_instance("Copes", foliage.call("pine_top", 0.0)))
-	root.add_child(bushes.to_instance("Arbustos", foliage.call("pine_top", 0.03), false))
+		root.add_child(mmi)
 	return root
 
 

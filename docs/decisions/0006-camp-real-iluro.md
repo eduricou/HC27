@@ -33,6 +33,23 @@ Les mides del joc no canvien. Orientació:
   - Al cel (`shaders/sky.gdshader`) hi ha dues carenes, una de verda a davant i una de blavosa al fons, més altes darrere de les banquetes i sense llums de nit.
   - Es mantenen les casetes del club, el carrer amb cotxes, els fanals i els arbres.
 - La llum del sol continua sent la de la web. Ve del sud-oest, de darrere el passeig: és una llum de tarda.
+- **Revisió (7/11/2026, gespa, banquetes i arbres):** l'usuari va dir que les banquetes eren rectangles lletjos i que els arbres eren estranys, i va passar una foto de les banquetes reals.
+  - **Banquetes** (`Dugout`, com a la foto):
+    - una sola estructura amb el sostre blanc, pla i continu;
+    - dues banquetes de tres trams, amb el marc d'acer taronja i els plafons negres (barra taronja a mitja alçada), i vuit cadires blanques de plàstic a cada banda;
+    - al mig, la cabina amb la taula blanca, l'escut de l'Iluro i el rètol «ILURO HOCKEY CLUB»;
+    - el sostre no és vermell, com semblava a la foto aèria.
+  - **Gespa:** els colors són els de la foto.
+    - És d'un verd apagat. Al costat de la vorada hi ha una franja groga d'1,2 m, i la resta de la zona de fora és verda com el terreny de joc (abans era tota de color llima).
+    - De prop es veu el gra de la fibra, i les franges dels rotlles (4,57 m) són més clares o més fosques segons d'on es miren.
+  - **Herba de fora:** clapes grans i suaus, en lloc de les taques quadrades de camuflatge.
+  - **Arbres** (`TreeMesh`, en 3D, en lloc de quads creuats amb imatges):
+    - pins pinyers amb el tronc inclinat, tres o quatre branques i la copa en para-sol;
+    - arbres de fulla de copa rodona al carrer;
+    - arbustos;
+    - la bardissa, amb el perfil arrodonit i irregular.
+
+    Les copes són masses deformades amb soroll, amb el shader `tree.gdshader` (clapes de fulles, llum que embolcalla i forats a la silueta). Hi ha 4 variants de pi, 3 d'arbre de carrer i 3 d'arbust, repetides amb MultiMesh. Les textures `pine`, `pine_top` i `tree`, i els shaders `foliage` i `hedge`, s'han tret.
 
 ### 2. Torres de llum
 

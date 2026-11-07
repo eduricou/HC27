@@ -5,6 +5,7 @@ extends GdUnitTestSuite
 
 const HL := Constants.HL
 const GHW := Constants.GHW
+const STADIUM := preload("res://scenes/stadium.tscn")
 
 # --- Disposició ----------------------------------------------------------------------
 
@@ -168,7 +169,7 @@ func test_xarxa_de_la_porteria() -> void:
 
 
 func test_el_camp_es_construeix_sencer() -> void:
-	var st: Stadium = auto_free(load("res://scenes/stadium.tscn").instantiate())
+	var st: Stadium = auto_free(STADIUM.instantiate())
 	add_child(st)
 	for n: String in [
 		"Entorn",
@@ -207,3 +208,61 @@ func test_el_camp_es_construeix_sencer() -> void:
 	st.set_night(true)
 	assert_bool((st.get_node("Sol") as Light3D).visible).is_false()
 	assert_bool((spots[0] as Light3D).visible).is_true()
+
+
+# --- Banquetes i arbres ----------------------------------------------------------------
+
+
+## Les banquetes com les reals: una estructura amb el sostre continu, vuit cadires a cada
+## banda, i la taula amb l'escut i el rètol del club al mig.
+func test_banquetes_com_les_reals() -> void:
+	var b: Node3D = auto_free(Dugout.build())
+	var mi := b.get_node("Estructura") as MeshInstance3D
+	var aabb := mi.mesh.get_aabb()
+	assert_float(aabb.size.x).is_between(17.0, 18.0)
+	assert_float(aabb.end.y).is_between(Dugout.H, Dugout.H + 0.2)
+	assert_float(aabb.end.z).is_less(Dugout.D + 0.3)
+	# Seients: la cinquena superfície és la del plàstic; 2 x 8 closques de 9 x 9 vèrtexs.
+	var seats: PackedVector3Array = mi.mesh.surface_get_arrays(3)[Mesh.ARRAY_VERTEX]
+	assert_int(seats.size()).is_equal(2 * Dugout.SEATS * 9 * 9)
+	assert_object(b.get_node_or_null("Escut")).is_not_null()
+	var labels := b.find_children("*", "Label3D", true, false)
+	var texts := labels.map(func(l: Label3D) -> String: return l.text)
+	assert_array(texts).contains(["ILURO", "HOCKEY CLUB"])
+
+
+## Els arbres fan la mida que toca, i res del talús tapa la vista TV (els límits de
+## test_res_no_tapa_la_camera_tv: 12 m els pins i 2,8 m els arbustos, a escala 1).
+func test_mida_dels_arbres() -> void:
+	var leaves := TreeMesh.foliage_material(null)
+	for i in 4:
+		var pine := TreeMesh.pine(11 + i, leaves).get_aabb()
+		assert_float(pine.end.y).is_between(9.5, 12.0)
+		assert_float(maxf(pine.size.x, pine.size.z)).is_between(6.0, 11.0)
+	for i in 3:
+		var tree := TreeMesh.broadleaf(51 + i, leaves).get_aabb()
+		assert_float(tree.end.y).is_between(6.0, 8.5)
+		var bush := TreeMesh.bush(31 + i, leaves).get_aabb()
+		assert_float(bush.end.y).is_less(2.8)
+	var hedge := TreeMesh.hedge(-60.0, 60.0, StadiumLayout.HEDGE_D, StadiumLayout.HEDGE_H, leaves)
+	var hb := hedge.get_aabb()
+	assert_float(hb.end.y).is_between(StadiumLayout.HEDGE_H - 0.3, StadiumLayout.HEDGE_H + 0.3)
+	assert_float(hb.position.y).is_greater_equal(0.0)
+
+
+## Tots els pins i arbustos hi són, repetits amb MultiMesh (unes quantes variants).
+func test_arbres_amb_multimesh() -> void:
+	var st: Stadium = auto_free(STADIUM.instantiate())
+	add_child(st)
+	var veg := StadiumLayout.vegetation()
+	var count := {}
+	for group: String in ["Pins", "Arbustos"]:
+		count[group] = 0
+		for mmi: MultiMeshInstance3D in st.get_node("Vegetacio/" + group).get_children():
+			count[group] += mmi.multimesh.instance_count
+	assert_int(count["Pins"]).is_equal(veg["pines"].size())
+	assert_int(count["Arbustos"]).is_equal(veg["bushes"].size())
+	var street := 0
+	for mmi: MultiMeshInstance3D in st.get_node("Carrer/Arbres").get_children():
+		street += mmi.multimesh.instance_count
+	assert_int(street).is_equal(StadiumLayout.street_trees().size())

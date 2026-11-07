@@ -1,7 +1,7 @@
 # Genera les textures del camp (assets/textures/stadium/) i els dígits dels dorsals
 # (assets/textures/players/), en PNG. Parteix de les funcions
 # que a la web les dibuixen amb canvas en arrencar: makeNoise(), makeLED(),
-# makeClubhouse(), makeFacade(), makePine() i makeLamp() (línies 1387–1467 de la
+# makeClubhouse(), makeFacade() i makeLamp() (línies 1387–1467 de la
 # referència). Aquí es fan una sola vegada i es desen, perquè Godot les importi amb
 # mipmaps.
 #
@@ -13,7 +13,7 @@
 #   MultiMesh al passeig. Tampoc hi ha el frontal ni el mur de la grada.
 # - Els anuncis (led.png) són pancartes de la tanca, amb els píxels quadrats (a la web el
 #   text queda estirat).
-# - Arbres del carrer (tree.png) i copa dels pins vista des de dalt (pine_top.png).
+# - Els arbres ja no són imatges: es fan en 3D (src/game/stadium/tree_mesh.gd).
 # - La resta té el doble de resolució que a la web, amb el mateix dibuix.
 extends SceneTree
 
@@ -69,9 +69,6 @@ func _run() -> void:
 	await _bake("stadium/people", Vector2i(CELL.x * ATLAS.x, CELL.y * ATLAS.y), _draw_people, true)
 	await _bake("stadium/led", Vector2i(4096, 64), _draw_led)
 	await _bake("stadium/clubhouse", Vector2i(1024, 256), _draw_clubhouse)
-	await _bake("stadium/pine", Vector2i(256, 256), _draw_pine, true)
-	await _bake("stadium/pine_top", Vector2i(128, 128), _draw_pine_top, true)
-	await _bake("stadium/tree", Vector2i(256, 256), _draw_tree, true)
 	await _bake("stadium/lamp", Vector2i(128, 64), _draw_lamp)
 	await _bake("players/digits", Vector2i(640, 64), _draw_digits, true)
 	print("Textures desades a %s" % OUT)
@@ -298,111 +295,7 @@ func _draw_clubhouse(c: CanvasItem) -> void:
 	c.draw_rect(Rect2(800, 176, 180, 52), Color("2f55e0"))
 
 
-# --- Pi pinyer i focus ----------------------------------------------------------------
-
-
-static func _quad_curve(
-	a: Vector2, ctrl: Vector2, b: Vector2, steps: int = 16
-) -> PackedVector2Array:
-	var pts := PackedVector2Array()
-	for i in steps + 1:
-		var t := float(i) / steps
-		pts.append(a.lerp(ctrl, t).lerp(ctrl.lerp(b, t), t))
-	return pts
-
-
-static func _ellipse(c: CanvasItem, center: Vector2, r: Vector2, color: Color) -> void:
-	var pts := PackedVector2Array()
-	for i in 24:
-		var a := TAU * i / 24.0
-		pts.append(center + Vector2(cos(a) * r.x, sin(a) * r.y))
-	c.draw_colored_polygon(pts, color)
-
-
-## Pi pinyer amb la copa plana. ref: makePine()
-func _draw_pine(c: CanvasItem) -> void:
-	var trunk := Color("5a3d28")
-	var t := _quad_curve(Vector2(128, 256), Vector2(118, 170), Vector2(132, 92))
-	c.draw_polyline(t, trunk, 12.0, true)
-	c.draw_polyline(
-		_quad_curve(Vector2(130, 120), Vector2(100, 100), Vector2(74, 86)), trunk, 5.0, true
-	)
-	c.draw_polyline(
-		_quad_curve(Vector2(131, 110), Vector2(160, 96), Vector2(186, 84)), trunk, 5.0, true
-	)
-	for i in 26:
-		var k := i / 25.0
-		var cx := 30.0 + k * 196.0 + (_rng.randf() - 0.5) * 12.0
-		var cy := 78.0 - sin(k * PI) * 22.0 + (_rng.randf() - 0.5) * 10.0
-		_ellipse(c, Vector2(cx, cy + 6.0), Vector2(26, 14), Color("1c3218"))
-	for i in 30:
-		var k := i / 29.0
-		var cx := 34.0 + k * 188.0 + (_rng.randf() - 0.5) * 10.0
-		var cy := 70.0 - sin(k * PI) * 24.0 + (_rng.randf() - 0.5) * 8.0
-		_ellipse(
-			c,
-			Vector2(cx, cy),
-			Vector2(22, 12),
-			Color("2c4a24") if _rng.randf() < 0.5 else Color("33552a")
-		)
-	for i in 16:
-		var k := _rng.randf()
-		var cx := 50.0 + k * 156.0
-		var cy := 60.0 - sin(k * PI) * 24.0
-		_ellipse(c, Vector2(cx, cy), Vector2(12, 6), Color("46703a"))
-
-
-## Copa del pi vista des de dalt (no hi és a la web): taques dels mateixos verds dins
-## d'un cercle, per a les vistes altes.
-func _draw_pine_top(c: CanvasItem) -> void:
-	var center := Vector2(64, 64)
-	for layer: Array in [
-		[30, 20.0, 50.0, Color("1c3218")],
-		[34, 17.0, 44.0, Color("2c4a24")],
-		[18, 11.0, 36.0, Color("46703a")]
-	]:
-		for i in int(layer[0]):
-			var a := _rng.randf() * TAU
-			var d: float = sqrt(_rng.randf()) * float(layer[2])
-			var r: float = float(layer[1]) * (0.7 + _rng.randf() * 0.5)
-			var col: Color = layer[3]
-			if layer[3] == Color("2c4a24") and _rng.randf() < 0.5:
-				col = Color("33552a")
-			_ellipse(c, center + Vector2(cos(a), sin(a)) * d, Vector2(r, r * 0.85), col)
-
-
-## Arbre del carrer (no hi és a la web): tronc i copa rodona.
-func _draw_tree(c: CanvasItem) -> void:
-	var trunk := Color("5b4636")
-	c.draw_polyline(
-		_quad_curve(Vector2(128, 256), Vector2(122, 200), Vector2(127, 140)), trunk, 13.0, true
-	)
-	c.draw_polyline(
-		_quad_curve(Vector2(126, 168), Vector2(104, 150), Vector2(92, 128)), trunk, 6.0, true
-	)
-	c.draw_polyline(
-		_quad_curve(Vector2(127, 160), Vector2(150, 144), Vector2(162, 124)), trunk, 6.0, true
-	)
-	var center := Vector2(128, 96)
-	# [taques, radi, mida de la copa, color, desplaçament]
-	var layers := [
-		[46, 30.0, Vector2(84, 66), Color("24401f"), Vector2(0, 8)],
-		[52, 24.0, Vector2(78, 60), Color("355a2c"), Vector2(-2, 0)],
-		[26, 15.0, Vector2(60, 46), Color("4e7a3c"), Vector2(-14, -12)],
-	]
-	for li in layers.size():
-		var layer: Array = layers[li]
-		var spread: Vector2 = layer[2]
-		var off: Vector2 = layer[4]
-		for i in int(layer[0]):
-			var a := _rng.randf() * TAU
-			var d := sqrt(_rng.randf())
-			var r: float = float(layer[1]) * (0.7 + _rng.randf() * 0.5)
-			var col: Color = layer[3]
-			if li == 1 and _rng.randf() < 0.4:
-				col = Color("3e6632")
-			var pos := center + off + Vector2(cos(a) * spread.x, sin(a) * spread.y) * d
-			_ellipse(c, pos, Vector2(r, r * 0.8), col)
+# --- Dorsals i focus ------------------------------------------------------------------
 
 
 ## Dígits dels dorsals (0–9 en una fila de caselles de 64x64), en blanc sobre transparent:

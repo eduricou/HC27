@@ -1,7 +1,10 @@
 // Terra del camp: gespa artificial amb franges, soroll i desgast, les línies del camp,
 // el formigó del voltant, el carrer Galícia amb la rotonda i l'herba seca de fora.
 // Port de FS_GROUND (reference/web/index.html, línies 1278–1342) adaptat al camp real de
-// l'Iluro (docs/decisions/0006): la gespa és més oliva i la franja de fora, color llima.
+// l'Iluro (docs/decisions/0006). Colors de la foto del camp (7/11/2026): la gespa és d'un
+// verd apagat, i a fora, al costat de la vorada, hi ha una franja groga d'un metre.
+// De prop es veu el gra de la fibra, i les franges dels rotlles canvien amb la direcció de
+// la mirada (la fibra fa un pèl de caiguda), com a la gespa artificial.
 // La llum la posa Godot (sol de tarda o focus de nit); aquí hi ha el color i les línies.
 // Coordenades: el món de Godot (x, z) és el pla (x, y) de la simulació. Les zones les
 // posa src/game/stadium/stadium.gd a partir de StadiumLayout.
@@ -33,9 +36,11 @@ const float PS = 6.475;
 const float LINE_HW = 0.0375;
 
 varying vec2 wp;
+varying vec3 w3;
 
 void vertex() {
-	wp = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xz;
+	w3 = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz;
+	wp = w3.xz;
 }
 
 // Cobertura d'una línia de mitja amplada hw a distància d (metres). Quan la línia és més
@@ -109,6 +114,10 @@ void fragment() {
 	float n1 = texture(noise_tex, p * 0.5).r;
 	float n2 = texture(noise_tex, p * 0.045).g;
 	float n3 = texture(noise_tex, p * 0.012).b;
+	// Gra fi (fibra, herba): només de prop, on no fa moiré.
+	float near = 1.0 - smoothstep(0.012, 0.06, fw);
+	float grain = (texture(noise_tex, p * 2.7).r - 0.5) * 0.7 + (texture(noise_tex, p * 7.9).r - 0.5);
+	grain *= near;
 	float ln = field_lines(p, fw);
 	float slab = joints(p, 2.0, fw);
 	float tile = joints(p, 0.5, fw);
@@ -130,22 +139,26 @@ void fragment() {
 		|| (rd < roundabout.z + 2.5 && !street);
 	bool verge = p.y < walk_y && p.y >= sidewalk_y;
 	if (run_off) {
-		if (in_pitch) {
-			float stripe = mod(floor((p.x + HL) / 4.57), 2.0);
-			col = mix(vec3(0.25, 0.455, 0.155), vec3(0.235, 0.43, 0.145), stripe);
-		} else {
-			// Franja de fora del terreny de joc, de color llima.
-			col = vec3(0.53, 0.60, 0.17);
-		}
-		col *= 0.88 + 0.18 * n1 + 0.12 * (n2 - 0.5) + 0.08 * (n3 - 0.5);
+		// Rotlles de 4,57 m: la fibra cau cap a +x o −x, i es veuen més clars o més foscos
+		// segons d'on es miren.
+		float roll = mod(floor((p.x + HL) / 4.57), 2.0) * 2.0 - 1.0;
+		vec3 v = normalize(CAMERA_POSITION_WORLD - w3);
+		float sheen = roll * v.x / max(length(v.xz), 0.2);
+		col = vec3(0.335, 0.43, 0.29) * (1.0 + 0.035 * sheen);
+		// Franja groga al costat de la vorada.
+		float edge = min(min(HL + 4.5 - ax, p.y + HW + 4.0), HW + 4.5 - p.y);
+		float yellow = 1.0 - smoothstep(1.2 - fw, 1.2 + fw, edge);
+		col = mix(col, vec3(0.86, 0.79, 0.16), yellow);
+		col *= 0.93 + 0.08 * n1 + 0.08 * (n2 - 0.5) + 0.06 * (n3 - 0.5) + 0.09 * grain;
 		// Desgast: centre, punts de penal, porteries i córners curts.
 		float w = 0.10 * wear(p, vec2(0.0), 6.0)
 			+ 0.17 * wear(vec2(ax, p.y), vec2(HL - 3.5, 0.0), 5.0)
 			+ 0.09 * wear(vec2(ax, p.y), vec2(HL - 11.0, 0.0), 8.0)
 			+ 0.13 * wear(vec2(ax, abs(p.y)), vec2(HL, 11.83), 2.5);
-		col = mix(col, vec3(0.45, 0.48, 0.26), w * (0.7 + 0.6 * n2));
+		col = mix(col, vec3(0.47, 0.5, 0.36), w * (0.7 + 0.6 * n2) * (1.0 - yellow));
 		if (ax <= HL + 0.1 && abs(p.y) <= HW + 0.1) {
-			col = mix(col, vec3(0.95, 0.96, 0.94), ln);
+			// La pintura de les línies, una mica gastada.
+			col = mix(col, vec3(0.93, 0.94, 0.91) * (0.95 + 0.05 * grain), ln);
 		}
 		turf = 1.0;
 	} else if (apron || huts) {
@@ -163,15 +176,19 @@ void fragment() {
 		col = vec3(0.64, 0.62, 0.58) * (0.86 + 0.16 * n1) * (0.9 + 0.1 * tile);
 	} else if (verge) {
 		// Franja de terra amb herba on hi ha els arbres.
-		col = mix(vec3(0.36, 0.31, 0.22), vec3(0.27, 0.36, 0.17), smoothstep(0.35, 0.65, n2));
-		col *= 0.8 + 0.3 * n1;
+		col = mix(vec3(0.36, 0.31, 0.22), vec3(0.29, 0.35, 0.19), smoothstep(0.3, 0.7, n2));
+		col *= 0.85 + 0.2 * n1 + 0.15 * grain;
 	} else {
-		// Herba seca i matolls (Maresme).
-		col = mix(vec3(0.41, 0.41, 0.25), vec3(0.32, 0.37, 0.2), smoothstep(0.15, 0.85, n2));
-		col *= 0.86 + 0.18 * n1 + 0.12 * (n3 - 0.5);
+		// Herba del Maresme: verd sec, amb clapes grans i suaus més grogues o més verdes
+		// (soroll de cel·les grans, sense el quadriculat del fi), i el gra de l'herba de prop.
+		float big = texture(noise_tex, p * 0.004 + 0.3).b;
+		float mid = texture(noise_tex, p * 0.019 + 0.7).b;
+		float patch = big * 0.6 + mid * 0.4;
+		col = mix(vec3(0.43, 0.42, 0.28), vec3(0.33, 0.39, 0.22), smoothstep(0.2, 0.8, patch));
+		col *= 0.94 + 0.08 * (n1 - 0.5) + 0.05 * (n2 - 0.5) + 0.16 * grain;
 	}
 	ALBEDO = pow(col, vec3(2.2));
 	// La gespa artificial fa una mica de brillantor (a contrallum); la resta, gens.
-	ROUGHNESS = mix(0.95, 0.88 - 0.06 * n1, turf);
-	SPECULAR = mix(0.15, 0.18, turf);
+	ROUGHNESS = mix(0.95, 0.82 - 0.05 * n1, turf);
+	SPECULAR = mix(0.15, 0.22, turf);
 }
